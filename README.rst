@@ -1,6 +1,6 @@
-=============
-Appion plugin
-=============
+==============
+NovaCTF plugin
+==============
 
 This plugin allows to use novaCTF within the Scipion framework.
 
