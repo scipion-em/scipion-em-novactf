@@ -33,7 +33,7 @@ from pwem.protocols import EMProtocol
 from pwem.emlib.image import ImageHandler
 from tomo.protocols import ProtTomoBase
 from tomo.convert import writeTiStack
-from tomo.objects import Tomogram, TomoAcquisition
+from tomo.objects import Tomogram, TomoAcquisition, TiltSeries
 
 
 class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
@@ -72,15 +72,28 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
         for ts in self.inputSetOfTiltSeries.get():
-            self._insertFunctionStep('convertInputStep', ts)
-            self._insertFunctionStep('computeDefocusStep', ts)
-            self._insertFunctionStep('computeCtfCorrectionStep', ts)
-            self._insertFunctionStep('computeFilteringStep', ts)
-            self._insertFunctionStep('computeReconstructionStep', ts)
-            self._insertFunctionStep('createOutputStep', ts)
+            tsDict = ts.getObjDict(includeBasic=True)
+            tsMapper = ts._mapper()
+            tsPrefix = ts.getPrefix()
+            # print(tsMapper)
+            # print(tsPrefix)
+            # tsDict['_mapper'] = tsMapper
+            # tsDict['_prefix'] = tsPrefix
+            self._insertFunctionStep('convertInputStep', tsDict, tsMapper, tsPrefix)
+            self._insertFunctionStep('computeDefocusStep')
+            self._insertFunctionStep('computeCtfCorrectionStep')
+            self._insertFunctionStep('computeFilteringStep')
+            self._insertFunctionStep('computeReconstructionStep')
+            self._insertFunctionStep('createOutputStep')
 
     # --------------------------- STEPS functions ----------------------------
-    def convertInputStep(self, ts):
+    def convertInputStep(self, tsDict, tsMapper, tsPrefix):
+        ts = TiltSeries()
+        ts.setAttributesFromDict(tsDict,
+                                 setBasic=True,
+                                 ignoreMissing=True)
+        ts._setMapper(tsMapper)
+        ts.getPrefix(tsPrefix)
         tsId = ts.getTsId()
         extraPrefix = self._getExtraPath(tsId)
         tmpPrefix = self._getTmpPath(tsId)
@@ -95,7 +108,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         angleFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
         ts.generateTltFile(angleFilePath)
 
-    def computeDefocusStep(self, ts):
+    def computeDefocusStep(self):
         tmpPrefix = self._getTmpPath(ts.gettsId())
         extraPrefix = self._getExtraPath(ts.gettsId())
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
@@ -113,7 +126,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                 'CorrectAstigmatism': 1,
                 'DefocusFile': defocusFilePath,
                 'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate(),
-                'DefocusStep': 15
+                'DefocusStep': 15  #
             }
             argsDefocus = "-Algorithm %(Algorithm)s," \
                           "-InputProjections %(InputProjections)s," \
@@ -129,7 +142,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                           "-DefocusStep %(DefocusStep)d"
             self.runJob('/usr/local/novaCTF/novaCTF', argsDefocus % paramsDefocus)
 
-    def computeCtfCorrectionStep(self, ts):
+    def computeCtfCorrectionStep(self):
         extraPrefix = self._getExtraPath(ts.gettsId())
         tmpPrefix = self._getTmpPath(ts.gettsId())
         outputFilePath = os.path.join(extraPrefix, "%s.ctfCorrection" % tsId)
@@ -164,7 +177,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                                 "-Volt %(Voltage)d"
             self.runJob('/usr/local/novaCTF/novaCTF', argsCtfCorrection % paramsCtfCorrection)
 
-    def computeFilteringStep(self, ts):
+    def computeFilteringStep(self):
         extraPrefix = self._getExtraPath(ts.gettsId())
         tmpPrefix = self._getTmpPath(ts.gettsId())
         outputFilePath = os.path.join(extraPrefix, "%s_out.filterProj" % tsId)
@@ -186,7 +199,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                                     "-RADIAL %(Radial)s"
             self.runJob('/usr/local/novaCTF/novaCTF', argsFilterProjections % paramsFilterProjections)
 
-    def computeReconstructionStep(self, ts):
+    def computeReconstructionStep(self):
         for ts in self.inputSetOfTiltSeries.get():
             extraPrefix = self._getExtraPath(ts.gettsId())
             tmpPrefix = self._getTmpPath(ts.gettsId())
@@ -205,14 +218,14 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                     'DefocusStep': 15
                 }
                 args3dctf = "-Algorithm %(Algorithm)s," \
-                                        "-InputProjections %(InputProjections)s," \
-                                        "-OutputFile %(OutputFile)s," \
-                                        "-TILTFILE %(TiltFile)s," \
-                                        "-THICKNESS %(Thickness)d," \
-                                        "-FULLIMAGE %(FullImage)s," \
-                                        "-SHIFT %(Shift)d," \
-                                        "-PixelSize %(PixelSize)f," \
-                                        "-DefocusStep %(DefocusStep)d"
+                            "-InputProjections %(InputProjections)s," \
+                            "-OutputFile %(OutputFile)s," \
+                            "-TILTFILE %(TiltFile)s," \
+                            "-THICKNESS %(Thickness)d," \
+                            "-FULLIMAGE %(FullImage)s," \
+                            "-SHIFT %(Shift)d," \
+                            "-PixelSize %(PixelSize)f," \
+                            "-DefocusStep %(DefocusStep)d"
             self.runJob('/usr/local/novaCTF/novaCTF', args3dctf % params3dctf)
 
     def createOutputStep(self):
