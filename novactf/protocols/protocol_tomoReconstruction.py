@@ -69,31 +69,26 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Shift in pixels of the tomogram in the z axis (beam direction).')
 
+        form.addParam('defocusStep', params.IntParam,
+                      default=15,
+                      label='Defocus step',
+                      important=True,
+                      display=params.EnumParam.DISPLAY_HLIST,
+                      help='Minimum defocus difference used for reconstruction')
+
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
         for ts in self.inputSetOfTiltSeries.get():
-            tsDict = ts.getObjDict(includeBasic=True)
-            tsMapper = ts._mapper()
-            tsPrefix = ts.getPrefix()
-            # print(tsMapper)
-            # print(tsPrefix)
-            # tsDict['_mapper'] = tsMapper
-            # tsDict['_prefix'] = tsPrefix
-            self._insertFunctionStep('convertInputStep', tsDict, tsMapper, tsPrefix)
-            self._insertFunctionStep('computeDefocusStep')
-            self._insertFunctionStep('computeCtfCorrectionStep')
-            self._insertFunctionStep('computeFilteringStep')
-            self._insertFunctionStep('computeReconstructionStep')
-            self._insertFunctionStep('createOutputStep')
+            self._insertFunctionStep('convertInputStep', ts.getObjId())
+            self._insertFunctionStep('computeDefocusStep', ts.getObjId())
+            self._insertFunctionStep('computeCtfCorrectionStep', ts.getObjId())
+            self._insertFunctionStep('computeFilteringStep', ts.getObjId())
+            self._insertFunctionStep('computeReconstructionStep', ts.getObjId())
+            self._insertFunctionStep('createOutputStep', ts.getObjId())
 
     # --------------------------- STEPS functions ----------------------------
-    def convertInputStep(self, tsDict, tsMapper, tsPrefix):
-        ts = TiltSeries()
-        ts.setAttributesFromDict(tsDict,
-                                 setBasic=True,
-                                 ignoreMissing=True)
-        ts._setMapper(tsMapper)
-        ts.getPrefix(tsPrefix)
+    def convertInputStep(self, tsObjId):
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         extraPrefix = self._getExtraPath(tsId)
         tmpPrefix = self._getTmpPath(tsId)
@@ -108,16 +103,19 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         angleFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
         ts.generateTltFile(angleFilePath)
 
-    def computeDefocusStep(self):
-        tmpPrefix = self._getTmpPath(ts.gettsId())
-        extraPrefix = self._getExtraPath(ts.gettsId())
+    def computeDefocusStep(self, tsObjId):
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        tsId = ts.getTsId()
+        tmpPrefix = self._getTmpPath(ts.getTsId())
+        extraPrefix = self._getExtraPath(ts.getTsId())
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
-        defocusFilePath = os.path.join(extraPrefix, "%s.defocus" % tsId)
-        for ti in ts:
+        for index, ti in enumerate(ts):
+            defocusFilePath = os.path.join(extraPrefix, "%s.defocus" % tsId)
+            path.copyFile("/home/fede/Downloads/paraFedeCTF.txt", defocusFilePath)
             paramsDefocus = {
                 'Algorithm': "defocus",
-                'InputProjections': ti.getLocation(),
-                'FullImage': ti.getDim(),
+                'InputProjections': str(ti.getLocation()[1]),
+                'FullImage': str(ti.getDim()[0]) + "," + str(ti.getDim()[1]),
                 'Thickness': self.tomoThickness.get(),
                 'TiltFile': tltFilePath,
                 'Shift': self.tomoShift.get(),
@@ -126,32 +124,34 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                 'CorrectAstigmatism': 1,
                 'DefocusFile': defocusFilePath,
                 'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate(),
-                'DefocusStep': 15  #
+                'DefocusStep': self.defocusStep.get()
             }
-            argsDefocus = "-Algorithm %(Algorithm)s," \
-                          "-InputProjections %(InputProjections)s," \
-                          "-FULLIMAGE %(FullImage)s," \
-                          "-THICKNESS %(Thickness)d," \
-                          "-TILTFILE %(TiltFile)s," \
-                          "-SHIFT %(Shift)d," \
-                          "-CorrectionType %(CorrectionType)s," \
-                          "-DefocusFileFormat %(DefocusFileFormat)," \
-                          "-CorrectAstigmatism %(CorrectAstigmatism)s," \
-                          "-DefocusFile %(DefocusFile)s," \
-                          "-PixelSize %(PixelSize)s," \
+            argsDefocus = "-Algorithm %(Algorithm)s " \
+                          "-InputProjections %(InputProjections)s " \
+                          "-FULLIMAGE %(FullImage)s " \
+                          "-THICKNESS %(Thickness)d " \
+                          "-TILTFILE %(TiltFile)s " \
+                          "-SHIFT %(Shift)d " \
+                          "-CorrectionType %(CorrectionType)s " \
+                          "-DefocusFileFormat %(DefocusFileFormat)s " \
+                          "-CorrectAstigmatism %(CorrectAstigmatism)d " \
+                          "-DefocusFile %(DefocusFile)s " \
+                          "-PixelSize %(PixelSize)s " \
                           "-DefocusStep %(DefocusStep)d"
-            self.runJob('/usr/local/novaCTF/novaCTF', argsDefocus % paramsDefocus)
+            self.runJob('/home/fede/novaCTF/novaCTF', argsDefocus % paramsDefocus)
 
-    def computeCtfCorrectionStep(self):
-        extraPrefix = self._getExtraPath(ts.gettsId())
-        tmpPrefix = self._getTmpPath(ts.gettsId())
-        outputFilePath = os.path.join(extraPrefix, "%s.ctfCorrection" % tsId)
-        defocusFilePath = os.path.join(extraPrefix, "%s.defocus" % tsId)
+    def computeCtfCorrectionStep(self, tsObjId):
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        tsId = ts.getTsId()
+        extraPrefix = self._getExtraPath(ts.getTsId())
+        tmpPrefix = self._getTmpPath(ts.getTsId())
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
-        for ti in ts:
+        for index, ti in enumerate(ts):
+            outputFilePath = os.path.join(extraPrefix, "%s_" % tsId + str(index) + ".ctfCorrection")
+            defocusFilePath = os.path.join(extraPrefix, "%s.defocus" % tsId)
             paramsCtfCorrection = {
                 'Algorithm': "ctfCorrection",
-                'InputProjections': ti.getLocation(),
+                'InputProjections': ti.getLocation()[1],
                 'OutputFile': outputFilePath,
                 'DefocusFile': defocusFilePath,
                 'TiltFile': tltFilePath,
@@ -159,85 +159,97 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                 'DefocusFileFormat': "ctffind4",
                 'CorrectAstigmatism': 1,
                 'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate(),
-                'AmplitudeContrast': self.inputSetOfTiltSeries.get().getAmplitudeContrast(),
-                'SphericalAberration': self.inputSetOfTiltSeries.get().getSphericalAberration(),
-                'Voltage': self.inputSetOfTiltSeries.get().getVoltage()
+                'AmplitudeContrast': self.inputSetOfTiltSeries.get().getAcquisition().getAmplitudeContrast(),
+                'SphericalAberration': self.inputSetOfTiltSeries.get().getAcquisition().getSphericalAberration(),
+                'Voltage': self.inputSetOfTiltSeries.get().getAcquisition().getVoltage()
             }
-            argsCtfCorrection = "-Algorithm %(Algorithm)s," \
-                                "-InputProjections %(InputProjections)s," \
-                                "-OutputFile %(OutputFile)s," \
-                                "-DefocusFile %(DefocusFile)s," \
-                                "-TILTFILE %(TiltFile)s," \
-                                "-CorrectionType %(CorrectionType)s," \
-                                "-DefocusFileFormat %(DefocusFileFormat)," \
-                                "-CorrectAstigmatism %(CorrectAstigmatism)s," \
-                                "-PixelSize %(PixelSize)f," \
-                                "-AmplitudeContrast %(AmplitudeContrast)f" \
-                                "-Cs %(SphericalAberration)f" \
+            print(paramsCtfCorrection)
+            argsCtfCorrection = "-Algorithm %(Algorithm)s " \
+                                "-InputProjections %(InputProjections)s " \
+                                "-OutputFile %(OutputFile)s " \
+                                "-DefocusFile %(DefocusFile)s " \
+                                "-TILTFILE %(TiltFile)s " \
+                                "-CorrectionType %(CorrectionType)s " \
+                                "-DefocusFileFormat %(DefocusFileFormat)s " \
+                                "-CorrectAstigmatism %(CorrectAstigmatism)s " \
+                                "-PixelSize %(PixelSize)f " \
+                                "-AmplitudeContrast %(AmplitudeContrast)f " \
+                                "-Cs %(SphericalAberration)f " \
                                 "-Volt %(Voltage)d"
-            self.runJob('/usr/local/novaCTF/novaCTF', argsCtfCorrection % paramsCtfCorrection)
+            self.runJob('/home/fede/novaCTF/novaCTF', argsCtfCorrection % paramsCtfCorrection)
 
-    def computeFilteringStep(self):
-        extraPrefix = self._getExtraPath(ts.gettsId())
-        tmpPrefix = self._getTmpPath(ts.gettsId())
+    def computeFilteringStep(self, tsObjId):
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        tsId = ts.getTsId()
+        extraPrefix = self._getExtraPath(ts.getTsId())
+        tmpPrefix = self._getTmpPath(ts.getTsId())
         outputFilePath = os.path.join(extraPrefix, "%s_out.filterProj" % tsId)
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
         for ti in ts:
             paramsFilterProjections = {
                 'Algorithm': "filterProjections",
-                'InputProjections': ti.getLocation(),
+                'InputProjections': ti.getLocation()[1],
                 'OutputFile': outputFilePath,
                 'TiltFile': tltFilePath,
                 'StackOrientation': "xy",
                 'Radial': "0.3,0.05"
             }
-            argsFilterProjections = "-Algorithm %(Algorithm)s," \
-                                    "-InputProjections %(InputProjections)s," \
-                                    "-OutputFile %(OutputFile)s," \
-                                    "-TILTFILE %(TiltFile)s," \
-                                    "-StackOrientation %(StackOrientation)s," \
+            argsFilterProjections = "-Algorithm %(Algorithm)s " \
+                                    "-InputProjections %(InputProjections)s " \
+                                    "-OutputFile %(OutputFile)s " \
+                                    "-TILTFILE %(TiltFile)s " \
+                                    "-StackOrientation %(StackOrientation)s " \
                                     "-RADIAL %(Radial)s"
-            self.runJob('/usr/local/novaCTF/novaCTF', argsFilterProjections % paramsFilterProjections)
+            self.runJob('/home/fede/novaCTF/novaCTF', argsFilterProjections % paramsFilterProjections)
 
-    def computeReconstructionStep(self):
-        for ts in self.inputSetOfTiltSeries.get():
-            extraPrefix = self._getExtraPath(ts.gettsId())
-            tmpPrefix = self._getTmpPath(ts.gettsId())
-            outputFilePath = os.path.join(extraPrefix, "%s_out.3dctf" % tsId)
-            tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
-            for ti in ts:
-                params3dctf = {
-                    'Algorithm': "3dctf",
-                    'InputProjections': ti.getLocation(),
-                    'OutputFile': outputFilePath,
-                    'TiltFile': tltFilePath,
-                    'Thickness': self.tomoThickness.get(),
-                    'FullImage': ti.getDim(),
-                    'Shift': self.tomoShift.get(),
-                    'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate(),
-                    'DefocusStep': 15
-                }
-                args3dctf = "-Algorithm %(Algorithm)s," \
-                            "-InputProjections %(InputProjections)s," \
-                            "-OutputFile %(OutputFile)s," \
-                            "-TILTFILE %(TiltFile)s," \
-                            "-THICKNESS %(Thickness)d," \
-                            "-FULLIMAGE %(FullImage)s," \
-                            "-SHIFT %(Shift)d," \
-                            "-PixelSize %(PixelSize)f," \
-                            "-DefocusStep %(DefocusStep)d"
-            self.runJob('/usr/local/novaCTF/novaCTF', args3dctf % params3dctf)
+    def computeReconstructionStep(self, tsObjId):
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        tsId = ts.getTsId()
+        extraPrefix = self._getExtraPath(ts.getTsId())
+        tmpPrefix = self._getTmpPath(ts.getTsId())
+        outputFilePath = os.path.join(extraPrefix, "%s_out.3dctf" % tsId)
+        tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
+        for ti in ts:
+            params3dctf = {
+                'Algorithm': "3dctf",
+                'InputProjections': ti.getLocation()[1],
+                'OutputFile': outputFilePath,
+                'TiltFile': tltFilePath,
+                'Thickness': self.tomoThickness.get(),
+                'FullImage': str(ti.getDim()[0]) + "," + str(ti.getDim()[1]),
+                'Shift': self.tomoShift.get(),
+                'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate(),
+                'DefocusStep': self.defocusStep.get()
+            }
+            args3dctf = "-Algorithm %(Algorithm)s " \
+                        "-InputProjections %(InputProjections)s " \
+                        "-OutputFile %(OutputFile)s " \
+                        "-TILTFILE %(TiltFile)s " \
+                        "-THICKNESS %(Thickness)d " \
+                        "-FULLIMAGE %(FullImage)s " \
+                        "-SHIFT %(Shift)d " \
+                        "-PixelSize %(PixelSize)f " \
+                        "-DefocusStep %(DefocusStep)d"
+        self.runJob('/home/fede/novaCTF/novaCTF', args3dctf % params3dctf)
 
-    def createOutputStep(self):
-        self.outputSetOfTomograms = self._createSetOfTomograms()
-        self.outputSetOfTomograms.setSamplingRate(self.inputSetOfTiltSeries.get().getSamplingRate())
-        for ts in self.inputSetOfTiltSeries.get():
-            tsId = ts.getTsId()
-            newTomogram = Tomogram()
-            newTomogram.setLocation(os.path.join(self._getExtraPath(tsId), '%s.mrc' % tsId))
-            self.outputSetOfTomograms.append(newTomogram)
-        self._defineOutputs(outputTomograms=self.outputSetOfTomograms)
-        self._defineSourceRelation(self.inputSetOfTiltSeries, self.outputSetOfTomograms)
+    def createOutputStep(self, tsObjId):
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        tsId = ts.getTsId()
+        newTomogram = Tomogram()
+        newTomogram.copyInfo(ts)
+        newTomogram.setLocation(os.path.join(self._getExtraPath(tsId), '%s.mrc' % tsId))
+        outputSetOfTomograms = self.getOutputSetOfTomograms()
+        outputSetOfTomograms.append(newTomogram)
 
         """Debug code ***"""
         path.moveTree(self._getTmpPath(), self._getExtraPath())
+
+    # --------------------------- UTILS functions ----------------------------
+    def getOutputSetOfTomograms(self):
+        if not hasattr(self, "outputInterpolatedSetOfTiltSeries"):
+            outputSetOfTomograms = self._createSetOfTomograms()
+            outputSetOfTomograms.copyInfo(self.inputSetOfTiltSeries.get())
+            outputSetOfTomograms.setDim(self.inputSetOfTiltSeries.get().getDim())
+            self._defineOutputs(outputSetOfTomograms=outputSetOfTomograms)
+            self._defineSourceRelation(self.inputSetOfTiltSeries, outputSetOfTomograms)
+        return self.outputSetOfTomograms
