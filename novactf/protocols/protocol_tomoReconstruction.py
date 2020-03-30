@@ -85,6 +85,34 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Minimum defocus difference used for reconstruction')
 
+        form.addParam('correctionType',
+                      params.EnumParam,
+                      choices=['Phase filp', 'Multiplication'],
+                      default=0,
+                      label='Correction type',
+                      important=True,
+                      display=params.EnumParam.DISPLAY_HLIST,
+                      help='Correction type to be applied for reconstruction')
+
+        groupRadialFrequencies = form.addGroup('Interpolated tilt-series',
+                                               help='This entry controls low-pass filtering with the radial weighting '
+                                                    'function.  The radial weighting function is linear away from the '
+                                                    'origin out to the distance in reciprocal space specified by the '
+                                                    'first value, followed by a Gaussian fall-off determined by the '
+                                                    'second value.')
+
+        groupRadialFrequencies.addParam('radialFirstParameter',
+                                        params.FloatParam,
+                                        default=0.3,
+                                        label='First parameter',
+                                        help='Linear region value')
+
+        groupRadialFrequencies.addParam('radialSecondParameter',
+                                        params.FloatParam,
+                                        default=0.05,
+                                        label='Second parameter',
+                                        help='Gaussian fall-off parameter')
+
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
         for ts in self.inputSetOfTiltSeries.get():
@@ -119,6 +147,10 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tmpPrefix = self._getTmpPath(ts.getTsId())
         extraPrefix = self._getExtraPath(ts.getTsId())
         path.copyFile(self.ctfFile.get(), os.path.join(extraPrefix, "%s.defocus" % tsId))
+        if self.correctionType.get() == 0:
+            correctionType = "phaseflip"
+        elif self.correctionType.get() == 1:
+            correctionType = "multiplication"
         paramsDefocus = {
             'Algorithm': "defocus",
             'InputProjections': os.path.join(tmpPrefix, "%s.st" % tsId),
@@ -126,11 +158,11 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             'Thickness': self.tomoThickness.get(),
             'TiltFile': os.path.join(tmpPrefix, "%s.rawtlt" % tsId),
             'Shift': "0.0," + str(self.tomoShift.get()),
-            'CorrectionType': "phaseflip",
+            'CorrectionType': correctionType,
             'DefocusFileFormat': "ctffind4",
             'CorrectAstigmatism': 1,
             'DefocusFile': os.path.join(extraPrefix, "%s.defocus" % tsId),
-            'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate()/10,
+            'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
         }
         argsDefocus = "-Algorithm %(Algorithm)s " \
@@ -155,6 +187,10 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
         outputFilePath = os.path.join(extraPrefix, "%s.st_" % tsId)
         defocusFilePath = os.path.join(extraPrefix, "%s.defocus_" % tsId)
+        if self.correctionType.get() == 0:
+            correctionType = "phaseflip"
+        elif self.correctionType.get() == 1:
+            correctionType = "multiplication"
         i = 0
         while os.path.exists(defocusFilePath + str(i)):
             paramsCtfCorrection = {
@@ -163,10 +199,10 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                 'OutputFile': outputFilePath + str(i),
                 'DefocusFile': defocusFilePath + str(i),
                 'TiltFile': tltFilePath,
-                'CorrectionType': "phaseflip",
+                'CorrectionType': correctionType,
                 'DefocusFileFormat': "ctffind4",
                 'CorrectAstigmatism': 1,
-                'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate()/10,
+                'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
                 'AmplitudeContrast': self.inputSetOfTiltSeries.get().getAcquisition().getAmplitudeContrast(),
                 'SphericalAberration': self.inputSetOfTiltSeries.get().getAcquisition().getSphericalAberration(),
                 'Voltage': self.inputSetOfTiltSeries.get().getAcquisition().getVoltage()
@@ -209,11 +245,11 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         while os.path.exists(os.path.join(extraPrefix, "%s_flip.st_%d" % (tsId, i))):
             paramsFilterProjections = {
                 'Algorithm': "filterProjections",
-                'InputProjections':  os.path.join(extraPrefix, "%s_flip.st_%d" % (tsId, i)),
+                'InputProjections': os.path.join(extraPrefix, "%s_flip.st_%d" % (tsId, i)),
                 'OutputFile': outputFilePath + str(i),
                 'TiltFile': tltFilePath,
                 'StackOrientation': "xz",
-                'Radial': "0.3,0.05"
+                'Radial': str(self.radialFirstParameter.get()) + "," + str(self.radialSecondParameter.get())
             }
             argsFilterProjections = "-Algorithm %(Algorithm)s " \
                                     "-InputProjections %(InputProjections)s " \
@@ -233,13 +269,13 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
         params3dctf = {
             'Algorithm': "3dctf",
-            'InputProjections':  os.path.join(extraPrefix, "%s_flip_filter.st" % tsId),
+            'InputProjections': os.path.join(extraPrefix, "%s_flip_filter.st" % tsId),
             'OutputFile': outputFilePath,
             'TiltFile': tltFilePath,
             'Thickness': self.tomoThickness.get(),
             'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[0]),
             'Shift': "0.0," + str(self.tomoShift.get()),
-            'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate()/10,
+            'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
         }
         args3dctf = "-Algorithm %(Algorithm)s " \
