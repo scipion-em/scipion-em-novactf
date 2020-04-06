@@ -94,12 +94,13 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Correction type to be applied for reconstruction')
 
-        groupRadialFrequencies = form.addGroup('Interpolated tilt-series',
+        groupRadialFrequencies = form.addGroup('Radial filtering',
                                                help='This entry controls low-pass filtering with the radial weighting '
                                                     'function.  The radial weighting function is linear away from the '
                                                     'origin out to the distance in reciprocal space specified by the '
                                                     'first value, followed by a Gaussian fall-off determined by the '
-                                                    'second value.')
+                                                    'second value.',
+                                               expertLevel=params.LEVEL_ADVANCED)
 
         groupRadialFrequencies.addParam('radialFirstParameter',
                                         params.FloatParam,
@@ -273,7 +274,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             'OutputFile': outputFilePath,
             'TiltFile': tltFilePath,
             'Thickness': self.tomoThickness.get(),
-            'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[0]),
+            'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[1]),
             'Shift': "0.0," + str(self.tomoShift.get()),
             'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
