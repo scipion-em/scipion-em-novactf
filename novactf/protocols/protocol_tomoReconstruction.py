@@ -62,6 +62,15 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                       important=True,
                       label='CTF File')
 
+        form.addParam('defocusFileFormat',
+                      params.EnumParam,
+                      choices=['Ctffind4', 'IMOD'],
+                      default=0,
+                      label='Defocus file format',
+                      important=True,
+                      display=params.EnumParam.DISPLAY_HLIST,
+                      help='Defocus file format from CTF estimation.')
+
         form.addParam('tomoThickness', params.FloatParam,
                       default=100,
                       label='Tomogram thickness',
@@ -148,10 +157,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tmpPrefix = self._getTmpPath(ts.getTsId())
         extraPrefix = self._getExtraPath(ts.getTsId())
         path.copyFile(self.ctfFile.get(), os.path.join(extraPrefix, "%s.defocus" % tsId))
-        if self.correctionType.get() == 0:
-            correctionType = "phaseflip"
-        elif self.correctionType.get() == 1:
-            correctionType = "multiplication"
+
         paramsDefocus = {
             'Algorithm': "defocus",
             'InputProjections': os.path.join(tmpPrefix, "%s.st" % tsId),
@@ -159,13 +165,14 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             'Thickness': self.tomoThickness.get(),
             'TiltFile': os.path.join(tmpPrefix, "%s.rawtlt" % tsId),
             'Shift': "0.0," + str(self.tomoShift.get()),
-            'CorrectionType': correctionType,
-            'DefocusFileFormat': "ctffind4",
+            'CorrectionType': self.getCorrectionType(),
+            'DefocusFileFormat': self.getDefocusFileFormat(),
             'CorrectAstigmatism': 1,
             'DefocusFile': os.path.join(extraPrefix, "%s.defocus" % tsId),
             'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
         }
+
         argsDefocus = "-Algorithm %(Algorithm)s " \
                       "-InputProjections %(InputProjections)s " \
                       "-FULLIMAGE %(FullImage)s " \
@@ -178,6 +185,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                       "-DefocusFile %(DefocusFile)s " \
                       "-PixelSize %(PixelSize)s " \
                       "-DefocusStep %(DefocusStep)d"
+
         self.runJob('/home/fede/novaCTF/novaCTF', argsDefocus % paramsDefocus)
 
     def computeCtfCorrectionStep(self, tsObjId):
@@ -188,10 +196,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
         outputFilePath = os.path.join(extraPrefix, "%s.st_" % tsId)
         defocusFilePath = os.path.join(extraPrefix, "%s.defocus_" % tsId)
-        if self.correctionType.get() == 0:
-            correctionType = "phaseflip"
-        elif self.correctionType.get() == 1:
-            correctionType = "multiplication"
+
         i = 0
         while os.path.exists(defocusFilePath + str(i)):
             paramsCtfCorrection = {
@@ -200,14 +205,15 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                 'OutputFile': outputFilePath + str(i),
                 'DefocusFile': defocusFilePath + str(i),
                 'TiltFile': tltFilePath,
-                'CorrectionType': correctionType,
-                'DefocusFileFormat': "ctffind4",
+                'CorrectionType': self.getCorrectionType(),
+                'DefocusFileFormat': self.getDefocusFileFormat(),
                 'CorrectAstigmatism': 1,
                 'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
                 'AmplitudeContrast': self.inputSetOfTiltSeries.get().getAcquisition().getAmplitudeContrast(),
                 'SphericalAberration': self.inputSetOfTiltSeries.get().getAcquisition().getSphericalAberration(),
                 'Voltage': self.inputSetOfTiltSeries.get().getAcquisition().getVoltage()
             }
+
             argsCtfCorrection = "-Algorithm %(Algorithm)s " \
                                 "-InputProjections %(InputProjections)s " \
                                 "-OutputFile %(OutputFile)s " \
@@ -220,7 +226,9 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                                 "-AmplitudeContrast %(AmplitudeContrast)f " \
                                 "-Cs %(SphericalAberration)f " \
                                 "-Volt %(Voltage)d"
+
             self.runJob('/home/fede/novaCTF/novaCTF', argsCtfCorrection % paramsCtfCorrection)
+
             i += 1
 
     def computeFlipStep(self, tsObjId):
@@ -242,6 +250,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tmpPrefix = self._getTmpPath(ts.getTsId())
         outputFilePath = os.path.join(extraPrefix, "%s_flip_filter.st_" % tsId)
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
+
         i = 0
         while os.path.exists(os.path.join(extraPrefix, "%s_flip.st_%d" % (tsId, i))):
             paramsFilterProjections = {
@@ -252,6 +261,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                 'StackOrientation': "xz",
                 'Radial': str(self.radialFirstParameter.get()) + "," + str(self.radialSecondParameter.get())
             }
+
             argsFilterProjections = "-Algorithm %(Algorithm)s " \
                                     "-InputProjections %(InputProjections)s " \
                                     "-OutputFile %(OutputFile)s " \
@@ -259,6 +269,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                                     "-StackOrientation %(StackOrientation)s " \
                                     "-RADIAL %(Radial)s"
             self.runJob('/home/fede/novaCTF/novaCTF', argsFilterProjections % paramsFilterProjections)
+
             i += 1
 
     def computeReconstructionStep(self, tsObjId):
@@ -268,6 +279,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tmpPrefix = self._getTmpPath(ts.getTsId())
         outputFilePath = os.path.join(extraPrefix, "%s.mrc" % tsId)
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
+
         params3dctf = {
             'Algorithm': "3dctf",
             'InputProjections': os.path.join(extraPrefix, "%s_flip_filter.st" % tsId),
@@ -279,6 +291,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
         }
+
         args3dctf = "-Algorithm %(Algorithm)s " \
                     "-InputProjections %(InputProjections)s " \
                     "-OutputFile %(OutputFile)s " \
@@ -288,6 +301,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                     "-SHIFT %(Shift)s " \
                     "-PixelSize %(PixelSize)f " \
                     "-DefocusStep %(DefocusStep)d"
+        
         self.runJob('/home/fede/novaCTF/novaCTF', args3dctf % params3dctf)
 
     def createOutputStep(self, tsObjId):
@@ -314,3 +328,17 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             self._defineOutputs(outputSetOfTomograms=outputSetOfTomograms)
             self._defineSourceRelation(self.inputSetOfTiltSeries, outputSetOfTomograms)
         return self.outputSetOfTomograms
+
+    def getCorrectionType(self):
+        if self.correctionType.get() == 0:
+            correctionType = "phaseflip"
+        elif self.correctionType.get() == 1:
+            correctionType = "multiplication"
+        return correctionType
+
+    def getDefocusFileFormat(self):
+        if self.defocusFileFormat.get() == 0:
+            defocusFileFormat = "ctffind4"
+        elif self.defocusFileFormat.get() == 1:
+            defocusFileFormat = "imod"
+        return defocusFileFormat
