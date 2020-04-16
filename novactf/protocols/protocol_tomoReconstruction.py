@@ -34,7 +34,6 @@ from pwem.emlib.image import ImageHandler
 from tomo.protocols import ProtTomoBase
 from tomo.convert import writeTiStack
 from tomo.objects import Tomogram, TiltSeries
-from pwem.emlib.image import ImageHandler
 
 
 class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
@@ -57,19 +56,28 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                       important=True,
                       label='Input set of tilt-Series')
 
-        form.addParam('ctfFile',
-                      params.PathParam,
-                      important=True,
-                      label='CTF File')
-
         form.addParam('defocusFileFormat',
                       params.EnumParam,
-                      choices=['Ctffind4', 'IMOD'],
+                      choices=['Ctffind', 'IMOD'],
                       default=0,
                       label='Defocus file format',
                       important=True,
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Defocus file format from CTF estimation.')
+
+        form.addParam('protCtffindCtfEstimation',
+                      params.PointerParam,
+                      label="Ctffind CTF estimation run",
+                      condition='defocusFileFormat==0',
+                      pointerClass='ProtTsCtffind',
+                      help='Select the previous Ctffind CTF estimation run.')
+
+        form.addParam('protImodCtfEstimation',
+                      params.PointerParam,
+                      label="IMOD CTF estimation run",
+                      condition='defocusFileFormat==1',
+                      pointerClass='ProtCtfEstimation',
+                      help='Select the previous IMOD CTF estimation run.')
 
         form.addParam('tomoThickness', params.FloatParam,
                       default=100,
@@ -156,7 +164,8 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         extraPrefix = self._getExtraPath(ts.getTsId())
-        path.copyFile(self.ctfFile.get(), os.path.join(extraPrefix, "%s.defocus" % tsId))
+        #***
+        #path.copyFile(self.ctfFile.get(), os.path.join(extraPrefix, "%s.defocus" % tsId))
 
         paramsDefocus = {
             'Algorithm': "defocus",
@@ -168,7 +177,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             'CorrectionType': self.getCorrectionType(),
             'DefocusFileFormat': self.getDefocusFileFormat(),
             'CorrectAstigmatism': 1,
-            'DefocusFile': os.path.join(extraPrefix, "%s.defocus" % tsId),
+            'DefocusFile': self.getDefocusFile(ts),
             'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
         }
@@ -301,7 +310,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                     "-SHIFT %(Shift)s " \
                     "-PixelSize %(PixelSize)f " \
                     "-DefocusStep %(DefocusStep)d"
-        
+
         self.runJob('/home/fede/novaCTF/novaCTF', args3dctf % params3dctf)
 
     def createOutputStep(self, tsObjId):
@@ -342,3 +351,38 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         elif self.defocusFileFormat.get() == 1:
             defocusFileFormat = "imod"
         return defocusFileFormat
+
+    def getDefocusFile(self, ts):
+        tsId = ts.getTsId()
+        outputDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
+        if self.defocusFileFormat.get() == 0:
+            self.generateCtffindDefocusFile(ts, outputDefocusFile)
+        elif self.defocusFileFormat.get() == 1:
+            file = ""
+            # file = path to imo config
+
+        return outputDefocusFile
+
+    def generateCtffindDefocusFile(self, ts, outputDefocusFile):
+        tsId = ts.getTsId()
+        defocusInfo = []
+
+        for ti in ts:
+            inputDefocusFileName = '%s_%03d_PSD.txt' % (tsId, ti.getObjId())
+            inputDefocusFilePrefix = self.protCtffindCtfEstimation.get()._getExtraPath(tsId)
+            inputDefocusFilePath = os.path.join(inputDefocusFilePrefix, inputDefocusFileName)
+            with open(inputDefocusFilePath , 'r') as f:
+                lines = f.readlines()
+                for line in lines:
+                    if line[0] != '#':
+                        defocusInfo.append(line.split(' '))
+
+        with open(outputDefocusFile, 'w') as f:
+            f.writelines("# Columns: #1 - micrograph number; #2 - defocus 1 [Angstroms]; #3 - defocus 2; "
+                         "#4 - azimuth of astigmatism; #5 - additional phase shift [radians]; #6 - cross correlation; "
+                         "#7 - spacing (in Angstroms) up to which CTF rings were fit successfully\n")
+
+            for counter, vector in enumerate(defocusInfo):
+                line = "%.6f %s %s %s %s %s %s" % \
+                       (counter+1, vector[1], vector[2], vector[3], vector[4], vector[5], vector[6])
+                f.writelines(line)
