@@ -141,6 +141,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             self._insertFunctionStep('computeFilteringStep', ts.getObjId())
             self._insertFunctionStep('computeReconstructionStep', ts.getObjId())
             self._insertFunctionStep('createOutputStep', ts.getObjId())
+            self._insertFunctionStep('deleteIntermediateFiles', ts.getObjId())
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
@@ -326,8 +327,35 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         outputSetOfTomograms.write()
         self._store()
 
-        """Debug code ***"""
-        path.moveTree(self._getTmpPath(), self._getExtraPath())
+    def deleteIntermediateFiles(self, tsObjId):
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        tsId = ts.getTsId()
+        extraPrefix = self._getExtraPath(ts.getTsId())
+        tmpPrefix = self._getTmpPath(ts.getTsId())
+
+        """Remove intermediate defocus files"""
+        i = 0
+        while os.path.exists(os.path.join(extraPrefix, "%s.defocus_%d" % (tsId, i))):
+            os.remove(os.path.join(extraPrefix, "%s.defocus_%d" % (tsId, i)))
+            i += 1
+
+        """Remove intermediate stacks"""
+        i = 0
+        while os.path.exists(os.path.join(extraPrefix, "%s.st_%d" % (tsId, i))):
+            os.remove(os.path.join(extraPrefix, "%s.st_%d" % (tsId, i)))
+            i += 1
+
+        """Remove intermediate flipped stacks"""
+        i = 0
+        while os.path.exists(os.path.join(extraPrefix, "%s_flip.st_%d" % (tsId, i))):
+            os.remove(os.path.join(extraPrefix, "%s_flip.st_%d" % (tsId, i)))
+            i += 1
+
+        """Remove intermediate flipped and filtered stacks"""
+        i = 0
+        while os.path.exists(os.path.join(extraPrefix, "%s_flip_filter.st_%d" % (tsId, i))):
+            os.remove(os.path.join(extraPrefix, "%s_flip_filter.st_%d" % (tsId, i)))
+            i += 1
 
     # --------------------------- UTILS functions ----------------------------
     def getOutputSetOfTomograms(self):
