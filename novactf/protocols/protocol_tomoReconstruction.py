@@ -141,7 +141,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             self._insertFunctionStep('computeFilteringStep', ts.getObjId())
             self._insertFunctionStep('computeReconstructionStep', ts.getObjId())
             self._insertFunctionStep('createOutputStep', ts.getObjId())
-            self._insertFunctionStep('deleteIntermediateFiles', ts.getObjId())
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
@@ -164,7 +163,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
-        extraPrefix = self._getExtraPath(ts.getTsId())
 
         paramsDefocus = {
             'Algorithm': "defocus",
@@ -199,11 +197,10 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     def computeCtfCorrectionStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
-        extraPrefix = self._getExtraPath(ts.getTsId())
         tmpPrefix = self._getTmpPath(ts.getTsId())
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
-        outputFilePath = os.path.join(extraPrefix, "%s.st_" % tsId)
-        defocusFilePath = os.path.join(extraPrefix, "%s.defocus_" % tsId)
+        outputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
+        defocusFilePath = os.path.join(tmpPrefix, "%s.defocus_" % tsId)
 
         i = 0
         while os.path.exists(defocusFilePath + str(i)):
@@ -242,9 +239,9 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     def computeFlipStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
-        extraPrefix = self._getExtraPath(ts.getTsId())
-        inputFilePath = os.path.join(extraPrefix, "%s.st_" % tsId)
-        outputFilePath = os.path.join(extraPrefix, "%s_flip.st_" % tsId)
+        tmpPrefix = self._getTmpPath(ts.getTsId())
+        inputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
+        outputFilePath = os.path.join(tmpPrefix, "%s_flip.st_" % tsId)
         i = 0
         while os.path.exists(os.path.join(inputFilePath + str(i))):
             argsFlip = inputFilePath + str(i) + " " + outputFilePath + str(i)
@@ -254,16 +251,15 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     def computeFilteringStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
-        extraPrefix = self._getExtraPath(ts.getTsId())
         tmpPrefix = self._getTmpPath(ts.getTsId())
-        outputFilePath = os.path.join(extraPrefix, "%s_flip_filter.st_" % tsId)
+        outputFilePath = os.path.join(tmpPrefix, "%s_flip_filter.st_" % tsId)
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
 
         i = 0
-        while os.path.exists(os.path.join(extraPrefix, "%s_flip.st_%d" % (tsId, i))):
+        while os.path.exists(os.path.join(tmpPrefix, "%s_flip.st_%d" % (tsId, i))):
             paramsFilterProjections = {
                 'Algorithm': "filterProjections",
-                'InputProjections': os.path.join(extraPrefix, "%s_flip.st_%d" % (tsId, i)),
+                'InputProjections': os.path.join(tmpPrefix, "%s_flip.st_%d" % (tsId, i)),
                 'OutputFile': outputFilePath + str(i),
                 'TiltFile': tltFilePath,
                 'StackOrientation': "xz",
@@ -290,7 +286,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
 
         params3dctf = {
             'Algorithm': "3dctf",
-            'InputProjections': os.path.join(extraPrefix, "%s_flip_filter.st" % tsId),
+            'InputProjections': os.path.join(tmpPrefix, "%s_flip_filter.st" % tsId),
             'OutputFile': outputFilePath,
             'TiltFile': tltFilePath,
             'Thickness': self.tomoThickness.get(),
@@ -313,9 +309,15 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         self.runJob('/home/fede/novaCTF/novaCTF', args3dctf % params3dctf)
 
     def createOutputStep(self, tsObjId):
-        outputSetOfTomograms = self.getOutputSetOfTomograms()
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
+
+        """Keep defocus file"""
+        tmpDefocusFile = os.path.join(self._getTmpPath(tsId), tsId + ".defocus")
+        extraDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
+        path.moveFile(tmpDefocusFile, extraDefocusFile)
+
+        outputSetOfTomograms = self.getOutputSetOfTomograms()
         extraPrefix = self._getExtraPath(tsId)
         newTomogram = Tomogram()
         newTomogram.copyInfo(ts)
@@ -324,36 +326,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         outputSetOfTomograms.update(newTomogram)
         outputSetOfTomograms.write()
         self._store()
-
-    def deleteIntermediateFiles(self, tsObjId):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
-        tsId = ts.getTsId()
-        extraPrefix = self._getExtraPath(ts.getTsId())
-        tmpPrefix = self._getTmpPath(ts.getTsId())
-
-        """Remove intermediate defocus files"""
-        i = 0
-        while os.path.exists(os.path.join(extraPrefix, "%s.defocus_%d" % (tsId, i))):
-            os.remove(os.path.join(extraPrefix, "%s.defocus_%d" % (tsId, i)))
-            i += 1
-
-        """Remove intermediate stacks"""
-        i = 0
-        while os.path.exists(os.path.join(extraPrefix, "%s.st_%d" % (tsId, i))):
-            os.remove(os.path.join(extraPrefix, "%s.st_%d" % (tsId, i)))
-            i += 1
-
-        """Remove intermediate flipped stacks"""
-        i = 0
-        while os.path.exists(os.path.join(extraPrefix, "%s_flip.st_%d" % (tsId, i))):
-            os.remove(os.path.join(extraPrefix, "%s_flip.st_%d" % (tsId, i)))
-            i += 1
-
-        """Remove intermediate flipped and filtered stacks"""
-        i = 0
-        while os.path.exists(os.path.join(extraPrefix, "%s_flip_filter.st_%d" % (tsId, i))):
-            os.remove(os.path.join(extraPrefix, "%s_flip_filter.st_%d" % (tsId, i)))
-            i += 1
 
     # --------------------------- UTILS functions ----------------------------
     def getOutputSetOfTomograms(self):
@@ -380,7 +352,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
 
     def getDefocusFile(self, ts):
         tsId = ts.getTsId()
-        outputDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
+        outputDefocusFile = os.path.join(self._getTmpPath(tsId), tsId + ".defocus")
 
         if self.defocusFileFormat.get() == 0:
             self.generateCtffindDefocusFile(ts, outputDefocusFile)
