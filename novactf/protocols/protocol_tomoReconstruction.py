@@ -317,12 +317,13 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         extraDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
         path.moveFile(tmpDefocusFile, extraDefocusFile)
 
+        """Generate output set"""
         outputSetOfTomograms = self.getOutputSetOfTomograms()
         extraPrefix = self._getExtraPath(tsId)
         newTomogram = Tomogram()
         newTomogram.copyInfo(ts)
-        outputSetOfTomograms.append(newTomogram)
         newTomogram.setLocation(os.path.join(extraPrefix, "%s.mrc" % tsId))
+        outputSetOfTomograms.append(newTomogram)
         outputSetOfTomograms.update(newTomogram)
         outputSetOfTomograms.write()
         self._store()
