@@ -165,8 +165,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         extraPrefix = self._getExtraPath(ts.getTsId())
-        #***
-        #path.copyFile(self.ctfFile.get(), os.path.join(extraPrefix, "%s.defocus" % tsId))
 
         paramsDefocus = {
             'Algorithm': "defocus",
@@ -383,11 +381,12 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     def getDefocusFile(self, ts):
         tsId = ts.getTsId()
         outputDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
+
         if self.defocusFileFormat.get() == 0:
             self.generateCtffindDefocusFile(ts, outputDefocusFile)
         elif self.defocusFileFormat.get() == 1:
-            file = ""
-            # file = path to imo config
+            outputDefocusFilePrefix = self.protImodCtfEstimation.get()._getExtraPath(tsId)
+            path.copyFile(os.path.join(outputDefocusFilePrefix, "%s.defocus" % tsId), outputDefocusFile)
 
         return outputDefocusFile
 
@@ -399,7 +398,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             inputDefocusFileName = '%s_%03d_PSD.txt' % (tsId, ti.getObjId())
             inputDefocusFilePrefix = self.protCtffindCtfEstimation.get()._getExtraPath(tsId)
             inputDefocusFilePath = os.path.join(inputDefocusFilePrefix, inputDefocusFileName)
-            with open(inputDefocusFilePath , 'r') as f:
+            with open(inputDefocusFilePath, 'r') as f:
                 lines = f.readlines()
                 for line in lines:
                     if line[0] != '#':
