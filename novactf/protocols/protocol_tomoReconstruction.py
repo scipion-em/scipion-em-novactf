@@ -353,3 +353,32 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         outputDefocusFile = os.path.join(self._getTmpPath(tsId), tsId + ".defocus")
 
         return outputDefocusFile
+
+    # --------------------------- INFO functions ----------------------------
+    def _validate(self):
+        validateMsgs = []
+
+        if not self.inputSetOfTiltSeries.get().getFirstItem().getFirstItem().hasCTF():
+            validateMsgs = "You need to generate an estimation of the CTF associated to the tilt series to calculate " \
+                           "its corrected reconstruction"
+
+        return validateMsgs
+
+    def _summary(self):
+        summary = []
+        if hasattr(self, 'outputSetOfTomograms'):
+            summary.append("Input Tilt-Series: %d.\nCTF corrected reconstructions calculated: %d.\n"
+                           % (self.inputSetOfTiltSeries.getSize(),
+                              self.outputCtfCorrectedSetOfTiltSeries.getSize()))
+        else:
+            summary.append("Output classes not ready yet.")
+        return summary
+
+    def _methods(self):
+        methods = []
+        if hasattr(self, 'outputCtfCorrectedSetOfTiltSeries'):
+            methods.append("%d CTF corrected tomograms have been calculated using the NovaCtf software.\n"
+                           % (self.outputCtfCorrectedSetOfTiltSeries.getSize()))
+        else:
+            methods.append("Output classes not ready yet.")
+        return methods
