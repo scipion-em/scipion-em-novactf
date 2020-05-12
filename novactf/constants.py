@@ -1,8 +1,8 @@
 # **************************************************************************
 # *
-# * Authors:     J.M. de la Rosa Trevin (delarosatrevin@scilifelab.se)
+# * Authors:     Federico P. de Isidro Gomez (fp.deisidro@cnb.csi.es) [1]
 # *
-# * SciLifeLab, Stockholm University
+# * [1] Centro Nacional de Biotecnologia, CSIC, Spain
 # *
 # * This program is free software; you can redistribute it and/or modify
 # * it under the terms of the GNU General Public License as published by
