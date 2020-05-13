@@ -2,7 +2,7 @@
 NovaCTF plugin
 ==============
 
-This plugin allows to use novaCTF within the Scipion framework.
+This plugin allows to use NovaCTF within the Scipion framework.
 
 =====
 Setup
@@ -12,7 +12,7 @@ Setup
 
 .. code-block::
 
-    scipion installp -p scipion-em-novaCtf
+    scipion installp -p scipion-em-novactf
 
 OR
 
@@ -22,5 +22,5 @@ Alternatively, in devel mode:
 
 .. code-block::
 
-    scipion installp -p local/path/to/scipion-em-novaCtf --devel
+    scipion installp -p local/path/to/scipion-em-novactf --devel
 
