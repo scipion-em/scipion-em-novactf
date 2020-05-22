@@ -26,14 +26,18 @@
 
 import pwem
 
+from .constants import NOVACTF_HOME
+
 _logo = ""
 _references = []
 
 
 class Plugin(pwem.Plugin):
+    _homeVar = NOVACTF_HOME
+
     @classmethod
     def _defineVariables(cls):
-        pass
+        cls._defineEmVar(NOVACTF_HOME, 'novactf-master')
 
     @classmethod
     def getEnviron(cls):
@@ -41,37 +45,36 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def getDependencies(cls):
-        neededPrograms = ['git', 'fftw3', 'fftw3f', 'lib64', 'gcc']
+        neededPrograms = ['wget', 'unzip', 'fftw3', 'fftw3f', 'lib64', 'gcc']
 
         return neededPrograms
 
     @classmethod
     def defineBinaries(cls, env):
-        version = '1.0.0'
+        version = 'master'
         NOVACTF_INSTALLED = 'novactf_%s_installed' % version
-        warningMsg1 = "'WARNING: if program fails when executing reinstall in scipion3/software/em/novactf-1.0.0 " \
-                      "setting the path to the include files from fftw3 as well as following fftw3 libraries: fftw3 " \
-                      "fftw3f. Typically both libraries should be in one folder and thus one library path should be " \
-                      "sufficient. Example command:'"
-        warningMsg2 = "'make includepath = \"path_to_fftw_include_files\" libpath = \"path_to_fftw_libraries\"'"
-        warningMsg3 = "'NovaCTF also requires standard libraries with the standard path being " \
-                      "/usr/lib64 - if the libraries are elsewhere open makefile and change the path accordingly'"
+        warningMsg = "'WARNING: if program fails when executing reinstall in scipion3/software/em/novactf-master " \
+                     "setting the path to the include files from fftw3 as well as following fftw3 libraries: fftw3 " \
+                     "fftw3f. Typically both libraries should be in one folder and thus one library path should be " \
+                     "sufficient. Example command:'" \
+                     "'make includepath = \"path_to_fftw_include_files\" libpath = \"path_to_fftw_libraries\"'" \
+                     "'NovaCTF also requires standard libraries with the standard path being " \
+                     "/usr/lib64 - if the libraries are elsewhere open makefile and change the path accordingly'"
+
+        # Display warning message
+        installationCmd = 'echo %s && ' % warningMsg
 
         # Download git repo
-        installationCmd = 'git clone https://github.com/turonova/novaCTF.git && '
+        installationCmd += 'wget https://github.com/turonova/novaCTF/archive/master.zip && ' \
+                           'unzip master.zip && '
 
         # Binaries compilation
-        installationCmd += 'cd novaCTF && ' \
+        installationCmd += 'cd novaCTF-master && ' \
                            'make && ' \
                            'cd .. && '
 
         # Create installation finished flag file
-        installationCmd += 'touch %s && ' % NOVACTF_INSTALLED
-
-        # Display warning message
-        installationCmd += 'echo %s && ' % warningMsg1
-        installationCmd += 'echo %s && ' % warningMsg2
-        installationCmd += 'echo %s' % warningMsg3
+        installationCmd += 'touch %s ' % NOVACTF_INSTALLED
 
         env.addPackage('novactf',
                        version=version,
@@ -79,3 +82,9 @@ class Plugin(pwem.Plugin):
                        neededProgs=cls.getDependencies(),
                        commands=[(installationCmd, NOVACTF_INSTALLED)],
                        default=True)
+
+    @classmethod
+    def runNovactf(cls, protocol, program, args, cwd=None):
+        """ Run NovaCTF command from a given protocol. """
+        fullProgram = '%s/%s/%s' % (cls.getVar(NOVACTF_HOME), "novaCTF-master", program)
+        protocol.runJob(fullProgram, args, env=cls.getEnviron(), cwd=cwd)
