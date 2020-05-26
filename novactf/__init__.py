@@ -88,3 +88,10 @@ class Plugin(pwem.Plugin):
         """ Run NovaCTF command from a given protocol. """
         fullProgram = '%s/%s/%s' % (cls.getVar(NOVACTF_HOME), "novaCTF-master", program)
         protocol.runJob(fullProgram, args, env=cls.getEnviron(), cwd=cwd)
+
+    @classmethod
+    def runImod(cls, protocol, program, args, cwd=None):
+        """ Run IMOD command from a given protocol. """
+        fullProgram = '%s/%s/bin/%s' % (cls.getVar(NOVACTF_HOME), "imod_4.10.42", program)
+        protocol.runJob(fullProgram, args, env=cls.getEnviron(), cwd=cwd)
+
