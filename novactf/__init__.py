@@ -26,17 +26,72 @@
 
 import pwem
 
+from .constants import NOVACTF_HOME
 
 _logo = ""
 _references = []
 
 
 class Plugin(pwem.Plugin):
+    _homeVar = NOVACTF_HOME
+
     @classmethod
     def _defineVariables(cls):
-        pass
+        cls._defineEmVar(NOVACTF_HOME, 'novactf-master')
 
     @classmethod
     def getEnviron(cls):
         return None
+
+    @classmethod
+    def getDependencies(cls):
+        neededPrograms = ['wget', 'unzip', 'fftw3', 'fftw3f', 'lib64', 'gcc']
+
+        return neededPrograms
+
+    @classmethod
+    def defineBinaries(cls, env):
+        version = 'master'
+        NOVACTF_INSTALLED = 'novactf_%s_installed' % version
+        warningMsg = "'WARNING: if program fails when executing reinstall in scipion3/software/em/novactf-master " \
+                     "setting the path to the include files from fftw3 as well as following fftw3 libraries: fftw3 " \
+                     "fftw3f. Typically both libraries should be in one folder and thus one library path should be " \
+                     "sufficient. Example command:'" \
+                     "'make includepath = \"path_to_fftw_include_files\" libpath = \"path_to_fftw_libraries\"'" \
+                     "'NovaCTF also requires standard libraries with the standard path being " \
+                     "/usr/lib64 - if the libraries are elsewhere open makefile and change the path accordingly'"
+
+        # Display warning message
+        installationCmd = 'echo %s && ' % warningMsg
+
+        # Download git repo
+        installationCmd += 'wget https://github.com/turonova/novaCTF/archive/master.zip && ' \
+                           'unzip master.zip && '
+
+        # Binaries compilation
+        installationCmd += 'cd novaCTF-master && ' \
+                           'make && ' \
+                           'cd .. && '
+
+        # Create installation finished flag file
+        installationCmd += 'touch %s ' % NOVACTF_INSTALLED
+
+        env.addPackage('novactf',
+                       version=version,
+                       tar='void.tgz',
+                       neededProgs=cls.getDependencies(),
+                       commands=[(installationCmd, NOVACTF_INSTALLED)],
+                       default=True)
+
+    @classmethod
+    def runNovactf(cls, protocol, program, args, cwd=None):
+        """ Run NovaCTF command from a given protocol. """
+        fullProgram = '%s/%s/%s' % (cls.getVar(NOVACTF_HOME), "novaCTF-master", program)
+        protocol.runJob(fullProgram, args, env=cls.getEnviron(), cwd=cwd)
+
+    @classmethod
+    def runImod(cls, protocol, program, args, cwd=None):
+        """ Run IMOD command from a given protocol. """
+        fullProgram = '%s/%s/bin/%s' % (cls.getVar(NOVACTF_HOME), "imod_4.10.42", program)
+        protocol.runJob(fullProgram, args, env=cls.getEnviron(), cwd=cwd)
 

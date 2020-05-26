@@ -43,6 +43,10 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+# Load requirements.txt
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
+
 # Arguments marked as "Required" below must be included for upload to PyPI.
 # Fields marked as "Optional" may be commented out.
 
@@ -114,6 +118,9 @@ setup(
     #
     # packages=find_packages(exclude=['contrib', 'docs', 'tests']),  # Required
     packages=find_packages(),
+
+    # install requires
+    install_requires=[requirements],
 
     # Although 'package_data' is the preferred approach, in some case you may
     # need to place data files outside of your packages. See:

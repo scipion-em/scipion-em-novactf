@@ -34,6 +34,7 @@ from pwem.emlib.image import ImageHandler
 from tomo.protocols import ProtTomoBase
 from tomo.convert import writeTiStack
 from tomo.objects import Tomogram, TiltSeries
+from novactf import Plugin
 
 
 class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
@@ -196,7 +197,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                       "-PixelSize %(PixelSize)s " \
                       "-DefocusStep %(DefocusStep)d"
 
-        self.runJob('/home/fede/novaCTF/novaCTF', argsDefocus % paramsDefocus)
+        Plugin.runNovactf(self, 'novaCTF', argsDefocus % paramsDefocus)
 
     def computeCtfCorrectionStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
@@ -236,7 +237,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                                 "-Cs %(SphericalAberration)f " \
                                 "-Volt %(Voltage)d"
 
-            self.runJob('/home/fede/novaCTF/novaCTF', argsCtfCorrection % paramsCtfCorrection)
+            Plugin.runNovactf(self, 'novaCTF', argsCtfCorrection % paramsCtfCorrection)
 
             i += 1
 
@@ -249,7 +250,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         i = 0
         while os.path.exists(os.path.join(inputFilePath + str(i))):
             argsFlip = inputFilePath + str(i) + " " + outputFilePath + str(i)
-            self.runJob('clip flipyz', argsFlip)
+            Plugin.runImod(self, 'clip flipyz', argsFlip)
             i += 1
 
     def computeFilteringStep(self, tsObjId):
@@ -276,7 +277,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                                     "-TILTFILE %(TiltFile)s " \
                                     "-StackOrientation %(StackOrientation)s " \
                                     "-RADIAL %(Radial)s"
-            self.runJob('/home/fede/novaCTF/novaCTF', argsFilterProjections % paramsFilterProjections)
+            Plugin.runNovactf(self, 'novaCTF', argsFilterProjections % paramsFilterProjections)
 
             i += 1
 
@@ -310,7 +311,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                     "-PixelSize %(PixelSize)f " \
                     "-DefocusStep %(DefocusStep)d"
 
-        self.runJob('/home/fede/novaCTF/novaCTF', args3dctf % params3dctf)
+        Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
 
     def createOutputStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
