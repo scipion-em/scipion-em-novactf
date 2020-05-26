@@ -251,7 +251,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         while os.path.exists(os.path.join(inputFilePath + str(i))):
             argsFlip = inputFilePath + str(i) + " " + outputFilePath + str(i)
             Plugin.runImod(self, 'clip flipyz', argsFlip)
-            # self.runJob('clip flipyz', argsFlip)
             i += 1
 
     def computeFilteringStep(self, tsObjId):
