@@ -57,7 +57,24 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                       important=True,
                       label='Input set of tilt-Series')
 
-        form.addParam('tomoThickness', params.FloatParam,
+        form.addParam('ctfEstimationType',
+                      params.EnumParam,
+                      choices=['IMOD', 'Other'],
+                      default=1,
+                      label='CTF estimation',
+                      important=True,
+                      display=params.EnumParam.DISPLAY_HLIST,
+                      help='CTF estimation origin.')
+
+        form.addParam('protImodCtfEstimation',
+                      params.PointerParam,
+                      label="IMOD CTF estimation run",
+                      condition='ctfEstimationType==0',
+                      pointerClass='ProtCtfEstimation',
+                      help='Select the previous IMOD CTF estimation run.')
+
+        form.addParam('tomoThickness',
+                      params.FloatParam,
                       default=100,
                       label='Tomogram thickness',
                       important=True,
@@ -113,7 +130,10 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     def _insertAllSteps(self):
         for ts in self.inputSetOfTiltSeries.get():
             self._insertFunctionStep('convertInputStep', ts.getObjId())
-            self._insertFunctionStep('generateCtffindDefocusFile', ts.getObjId())
+            if self.ctfEstimationType.get() == 0:
+                self._insertFunctionStep('generateImodDefocusFile', ts.getObjId())
+            elif self.ctfEstimationType.get() == 1:
+                self._insertFunctionStep('generateCtffindDefocusFile', ts.getObjId())
             self._insertFunctionStep('computeDefocusStep', ts.getObjId())
             self._insertFunctionStep('computeCtfCorrectionStep', ts.getObjId())
             self._insertFunctionStep('computeFlipStep', ts.getObjId())
@@ -137,6 +157,14 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         """Generate angle file"""
         angleFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
         ts.generateTltFile(angleFilePath)
+
+    def generateImodDefocusFile(self, tsObjId):
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        tsId = ts.getTsId()
+        outputDefocusFile = self.getDefocusFile(ts)
+
+        outputDefocusFilePrefix = self.protImodCtfEstimation.get()._getExtraPath(tsId)
+        path.copyFile(os.path.join(outputDefocusFilePrefix, "%s.defocus" % tsId), outputDefocusFile)
 
     def generateCtffindDefocusFile(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
@@ -162,7 +190,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                 line = "%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n" % \
                        (counter+1, vector[0], vector[1], vector[2], vector[3], vector[4], vector[5])
                 f.writelines(line)
-
 
     def computeDefocusStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
@@ -359,7 +386,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     def _validate(self):
         validateMsgs = []
 
-        if not self.inputSetOfTiltSeries.get().getFirstItem().getFirstItem().hasCTF():
+        if self.ctfEstimationType.get() == 1 and not self.inputSetOfTiltSeries.get().getFirstItem().getFirstItem().hasCTF():
             validateMsgs = "You need to generate an estimation of the CTF associated to the tilt series to calculate " \
                            "its corrected reconstruction"
 
