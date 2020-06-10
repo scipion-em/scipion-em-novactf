@@ -35,6 +35,7 @@ from tomo.protocols import ProtTomoBase
 from tomo.convert import writeTiStack
 from tomo.objects import Tomogram, TiltSeries
 from novactf import Plugin
+from imod import Plugin as imodPlugin
 
 
 class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
@@ -277,7 +278,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         i = 0
         while os.path.exists(os.path.join(inputFilePath + str(i))):
             argsFlip = inputFilePath + str(i) + " " + outputFilePath + str(i)
-            Plugin.runImod(self, 'clip flipyz', argsFlip)
+            imodPlugin.runImod(self, 'clip flipyz', argsFlip)
             i += 1
 
     def computeFilteringStep(self, tsObjId):
@@ -348,6 +349,9 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tmpDefocusFile = os.path.join(self._getTmpPath(tsId), tsId + ".defocus")
         extraDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
         path.moveFile(tmpDefocusFile, extraDefocusFile)
+
+        """Remove intermediate files. Necessary for big sets of tilt-series"""
+        path.cleanPath(self._getTmpPath(tsId))
 
         """Generate output set"""
         outputSetOfTomograms = self.getOutputSetOfTomograms()
