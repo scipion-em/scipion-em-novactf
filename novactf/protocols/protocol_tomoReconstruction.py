@@ -71,7 +71,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                       params.PointerParam,
                       label="IMOD CTF estimation run",
                       condition='ctfEstimationType==0',
-                      pointerClass='ProtCtfEstimation',
+                      pointerClass='ProtImodCtfEstimation',
                       help='Select the previous IMOD CTF estimation run.')
 
         form.addParam('tomoThickness',
