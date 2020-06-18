@@ -314,13 +314,13 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tsId = ts.getTsId()
         extraPrefix = self._getExtraPath(ts.getTsId())
         tmpPrefix = self._getTmpPath(ts.getTsId())
-        outputFilePath = os.path.join(extraPrefix, "%s.mrc" % tsId)
+        outputFilePathFlipped = os.path.join(tmpPrefix, "%s.mrc" % tsId)
         tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
 
         params3dctf = {
             'Algorithm': "3dctf",
             'InputProjections': os.path.join(tmpPrefix, "%s_flip_filter.st" % tsId),
-            'OutputFile': outputFilePath,
+            'OutputFile': outputFilePathFlipped,
             'TiltFile': tltFilePath,
             'Thickness': self.tomoThickness.get(),
             'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[1]),
@@ -340,6 +340,15 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                     "-DefocusStep %(DefocusStep)d"
 
         Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
+
+        outputFilePath = os.path.join(extraPrefix, "%s.mrc" % tsId)
+
+        argsTrimvol = outputFilePathFlipped + " "
+        argsTrimvol += outputFilePath + " "
+        argsTrimvol += "-yz "
+
+        imodPlugin.runImod(self, 'trimvol', argsTrimvol)
+
 
     def createOutputStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
