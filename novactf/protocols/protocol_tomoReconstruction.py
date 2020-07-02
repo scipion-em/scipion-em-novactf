@@ -277,8 +277,8 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         outputFilePath = os.path.join(tmpPrefix, "%s_flip.st_" % tsId)
         i = 0
         while os.path.exists(os.path.join(inputFilePath + str(i))):
-            argsFlip = inputFilePath + str(i) + " " + outputFilePath + str(i)
-            imodPlugin.runImod(self, 'clip flipyz', argsFlip)
+            argsFlip = "flipyz " + inputFilePath + str(i) + " " + outputFilePath + str(i)
+            imodPlugin.runImod(self, 'clip', argsFlip)
             i += 1
 
     def computeFilteringStep(self, tsObjId):
