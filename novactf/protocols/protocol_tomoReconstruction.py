@@ -409,7 +409,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         summary = []
         if hasattr(self, 'outputSetOfTomograms'):
             summary.append("Input Tilt-Series: %d.\nCTF corrected reconstructions calculated: %d.\n"
-                           % (self.inputSetOfTiltSeries.getSize(),
+                           % (self.inputSetOfTiltSeries.get().getSize(),
                               self.outputCtfCorrectedSetOfTiltSeries.getSize()))
         else:
             summary.append("Output classes not ready yet.")
