@@ -90,3 +90,19 @@ class TestNovaCtfBase(BaseTest):
                                                 maximumAstigmatism=maximumAstigmatism)
         cls.launchProtocol(cls.protCTFEstimation)
         return cls.protCTFEstimation
+
+    @classmethod
+    def _runCtfReconstruction(cls, inputSoTS, ctfEstimationType, protImodCtfEstimation, tomoThickness, tomoShift,
+                              defocusStep, correctionType, radialFirstParameter, radialSecondParameter):
+        cls.protCTFReconstruction = cls.newProtocol(protocol_tomoReconstruction,
+                                                    inputSetOfTiltSeries=inputSoTS,
+                                                    ctfEstimationType=ctfEstimationType,
+                                                    protImodCtfEstimation=protImodCtfEstimation,
+                                                    tomoThickness=tomoThickness,
+                                                    tomoShift=tomoShift,
+                                                    defocusStep=defocusStep,
+                                                    correctionType=correctionType,
+                                                    radialFirstParameter=radialFirstParameter,
+                                                    radialSecondParameter=radialSecondParameter)
+        cls.launchProtocol(cls.protCTFReconstruction)
+        return cls.protCTFReconstruction
