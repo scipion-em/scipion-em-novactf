@@ -26,7 +26,7 @@
 
 from pyworkflow.tests import DataSet
 
-# DataSet(name='tomo-em', folder='tomo-em',
-#         files={
-#                'ts1': 'tutorialData/BBa.st',
-#                'ts2': 'tutorialData/BBb.st'})
+DataSet(name='tomo-em',
+        folder='tomo-em',
+        files={
+            'tsCtf': 'tutorialDataImodCTF/WTI042413_1series4.st'})
