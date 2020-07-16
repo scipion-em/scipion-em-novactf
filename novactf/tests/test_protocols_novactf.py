@@ -106,3 +106,22 @@ class TestNovaCtfBase(BaseTest):
                                                     radialSecondParameter=radialSecondParameter)
         cls.launchProtocol(cls.protCTFReconstruction)
         return cls.protCTFReconstruction
+
+class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+
+        cls.inputDataSet = DataSet.getDataSet('tomo-em')
+        cls.inputSoTS = cls.inputDataSet.getFile('tsCtf')
+
+        cls.protImportTS = cls._runImportTiltSeries(filesPath=os.path.split(cls.inputSoTS)[0],
+                                                    pattern="WTI042413_1series4.st",
+                                                    anglesFrom=2,
+                                                    voltage=300,
+                                                    magnification=50000,
+                                                    sphericalAberration=0.0,
+                                                    amplitudeContrast=0.07,
+                                                    samplingRate=6.73981,
+                                                    doseInitial=0,
+                                                    dosePerFrame=0.3)
