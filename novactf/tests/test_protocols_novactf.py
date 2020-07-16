@@ -23,3 +23,36 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # **************************************************************************
+
+from pyworkflow.tests import *
+from imod.protocols import *
+from novactf.protocols import protocol_tomoReconstruction
+from pwem.emlib.image import ImageHandler
+import tomo
+
+class TestNovaCtfBase(BaseTest):
+    @classmethod
+    def setUpClass(cls):
+        setupTestProject(cls)
+
+    @classmethod
+    def _runImportTiltSeries(cls, filesPath, pattern, voltage, magnification, sphericalAberration, amplitudeContrast,
+                             samplingRate, doseInitial, dosePerFrame, anglesFrom=0, minAngle=0.0, maxAngle=0.0,
+                             stepAngle=1.0):
+        cls.protImportTS = cls.newProtocol(tomo.protocols.ProtImportTs,
+                                           filesPath=filesPath,
+                                           filesPattern=pattern,
+                                           voltage=voltage,
+                                           anglesFrom=anglesFrom,
+                                           magnification=magnification,
+                                           sphericalAberration=sphericalAberration,
+                                           amplitudeContrast=amplitudeContrast,
+                                           samplingRate=samplingRate,
+                                           doseInitial=doseInitial,
+                                           dosePerFrame=dosePerFrame,
+                                           minAngle=minAngle,
+                                           maxAngle=maxAngle,
+                                           stepAngle=stepAngle)
+        cls.launchProtocol(cls.protImportTS)
+        return cls.protImportTS
+
