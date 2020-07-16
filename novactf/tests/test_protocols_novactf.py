@@ -25,7 +25,7 @@
 # **************************************************************************
 
 from pyworkflow.tests import *
-from imod.protocols import *
+import imod
 from novactf.protocols import protocol_tomoReconstruction
 from pwem.emlib.image import ImageHandler
 import tomo
@@ -56,3 +56,37 @@ class TestNovaCtfBase(BaseTest):
         cls.launchProtocol(cls.protImportTS)
         return cls.protImportTS
 
+    @classmethod
+    def _runCTFEstimation(cls, inputSoTS, defocusTol, expectedDefocusOrigin, expectedDefocusValue, expectedDefocusFile,
+                          axisAngle, interactiveMode, leftDefTol, rightDefTol, tileSize, angleStep, angleRange,
+                          startFreq, endFreq, extraZerosToFit, skipAstigmaticViews, searchAstigmatism,
+                          findAstigPhaseCutonToggle, phaseShiftAstigmatism, cutOnFrequencyAstigmatism,
+                          minimumViewsAstigmatism, minimumViewsPhaseShift, numberSectorsAstigmatism,
+                          maximumAstigmatism):
+        cls.protCTFEstimation = cls.newProtocol(imod.protocols.ProtImodCtfEstimation,
+                                                inputSetOfTiltSeries=inputSoTS,
+                                                defocusTol=defocusTol,
+                                                expectedDefocusOrigin=expectedDefocusOrigin,
+                                                expectedDefocusValue=expectedDefocusValue,
+                                                expectedDefocusFile=expectedDefocusFile,
+                                                axisAngle=axisAngle,
+                                                interactiveMode=interactiveMode,
+                                                leftDefTol=leftDefTol,
+                                                rightDefTol=rightDefTol,
+                                                tileSize=tileSize,
+                                                angleStep=angleStep,
+                                                angleRange=angleRange,
+                                                startFreq=startFreq,
+                                                endFreq=endFreq,
+                                                extraZerosToFit=extraZerosToFit,
+                                                skipAstigmaticViews=skipAstigmaticViews,
+                                                searchAstigmatism=searchAstigmatism,
+                                                findAstigPhaseCutonToggle=findAstigPhaseCutonToggle,
+                                                phaseShiftAstigmatism=phaseShiftAstigmatism,
+                                                cutOnFrequencyAstigmatism=cutOnFrequencyAstigmatism,
+                                                minimumViewsAstigmatism=minimumViewsAstigmatism,
+                                                minimumViewsPhaseShift=minimumViewsPhaseShift,
+                                                numberSectorsAstigmatism=numberSectorsAstigmatism,
+                                                maximumAstigmatism=maximumAstigmatism)
+        cls.launchProtocol(cls.protCTFEstimation)
+        return cls.protCTFEstimation
