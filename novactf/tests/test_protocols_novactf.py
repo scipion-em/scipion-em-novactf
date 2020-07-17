@@ -26,7 +26,7 @@
 
 from pyworkflow.tests import *
 import imod
-from novactf.protocols import protocol_tomoReconstruction
+from novactf.protocols import *
 from pwem.emlib.image import ImageHandler
 import tomo
 
@@ -95,7 +95,7 @@ class TestNovaCtfBase(BaseTest):
     @classmethod
     def _runCtfReconstruction(cls, inputSoTS, ctfEstimationType, protImodCtfEstimation, tomoThickness, tomoShift,
                               defocusStep, correctionType, radialFirstParameter, radialSecondParameter):
-        cls.protCTFReconstruction = cls.newProtocol(protocol_tomoReconstruction,
+        cls.protCTFReconstruction = cls.newProtocol(ProtTomoCtfReconstruction,
                                                     inputSetOfTiltSeries=inputSoTS,
                                                     ctfEstimationType=ctfEstimationType,
                                                     protImodCtfEstimation=protImodCtfEstimation,
@@ -159,24 +159,24 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
                                                       maximumAstigmatism=1.2)
 
         cls.protCTFReconstruction = \
-            cls.newProtocol(inputSetOfTiltSeries=cls.protCTFEstimation.outputCtfEstimatedTiltSeries,
-                            ctfEstimationType=0,
-                            protImodCtfEstimation=cls.protCTFEstimation,
-                            tomoThickness=cls.thicknessTomo,
-                            tomoShift=0.0,
-                            defocusStep=15,
-                            correctionType=0,
-                            radialFirstParameter=0.3,
-                            radialSecondParameter=0.05)
+            cls._runCtfReconstruction(inputSoTS=cls.protCTFEstimation.outputCtfEstimatedSetOfTiltSeries,
+                                      ctfEstimationType=0,
+                                      protImodCtfEstimation=cls.protCTFEstimation,
+                                      tomoThickness=cls.thicknessTomo,
+                                      tomoShift=0,
+                                      defocusStep=15,
+                                      correctionType=0,
+                                      radialFirstParameter=0.3,
+                                      radialSecondParameter=0.05)
 
     def test_tomoReconstructionOutput(self):
         self.assertIsNotNone(self.protCTFReconstruction.outputSetOfTomograms)
 
     def test_tomoReconstructionOutputSize(self):
-        self.assertTrue(self.protTomoReconstruction.outputSetOfTomograms.getSize() == 1)
+        self.assertTrue(self.protCTFReconstruction.outputSetOfTomograms.getSize() == 1)
 
     def test_tomoReconstructionOutputTomogramDimensions(self):
         ih = ImageHandler()
         self.assertTrue(
-            ih.getDimensions(self.protTomoReconstruction.outputSetOfTomograms.getFirstItem()) ==
+            ih.getDimensions(self.protCTFReconstruction.outputSetOfTomograms.getFirstItem()) ==
             (960, 928, self.thicknessTomo, 1))
