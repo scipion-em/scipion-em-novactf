@@ -164,5 +164,8 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
                             radialFirstParameter=0.3,
                             radialSecondParameter=0.05)
 
-    def test_outputReconstruction(self):
+    def test_tomoReconstructionOutput(self):
         self.assertIsNotNone(self.protCTFReconstruction.outputSetOfTomograms)
+
+    def test_tomoReconstructionOutputSize(self):
+        self.assertTrue(self.protTomoReconstruction.outputSetOfTomograms.getSize() == 1)
