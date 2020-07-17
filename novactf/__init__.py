@@ -28,6 +28,7 @@ import pwem
 
 from .constants import NOVACTF_HOME
 
+__version__ = '3.0.1'
 _logo = ""
 _references = []
 
