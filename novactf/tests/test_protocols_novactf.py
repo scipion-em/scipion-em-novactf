@@ -30,6 +30,7 @@ from novactf.protocols import protocol_tomoReconstruction
 from pwem.emlib.image import ImageHandler
 import tomo
 
+
 class TestNovaCtfBase(BaseTest):
     @classmethod
     def setUpClass(cls):
@@ -107,6 +108,7 @@ class TestNovaCtfBase(BaseTest):
         cls.launchProtocol(cls.protCTFReconstruction)
         return cls.protCTFReconstruction
 
+
 class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
     @classmethod
     def setUpClass(cls):
@@ -151,4 +153,13 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
                                                       numberSectorsAstigmatism=36,
                                                       maximumAstigmatism=1.2)
 
-        
+        cls.protCTFReconstruction = \
+            cls.newProtocol(inputSetOfTiltSeries=cls.protCTFEstimation.outputCtfEstimatedTiltSeries,
+                            ctfEstimationType=0,
+                            protImodCtfEstimation=cls.protCTFEstimation,
+                            tomoThickness=20.0,
+                            tomoShift=0.0,
+                            defocusStep=15,
+                            correctionType=0,
+                            radialFirstParameter=0.3,
+                            radialSecondParameter=0.05)
