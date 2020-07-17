@@ -163,3 +163,6 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
                             correctionType=0,
                             radialFirstParameter=0.3,
                             radialSecondParameter=0.05)
+
+    def test_outputReconstruction(self):
+        self.assertIsNotNone(self.protCTFReconstruction.outputSetOfTomograms)
