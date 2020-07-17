@@ -399,7 +399,8 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     def _validate(self):
         validateMsgs = []
 
-        if self.ctfEstimationType.get() == 1 and not self.inputSetOfTiltSeries.get().getFirstItem().getFirstItem().hasCTF():
+        if self.ctfEstimationType.get() == 1 and \
+                not self.inputSetOfTiltSeries.get().getFirstItem().getFirstItem().hasCTF():
             validateMsgs = "You need to generate an estimation of the CTF associated to the tilt series to calculate " \
                            "its corrected reconstruction"
 
@@ -410,16 +411,16 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         if hasattr(self, 'outputSetOfTomograms'):
             summary.append("Input Tilt-Series: %d.\nCTF corrected reconstructions calculated: %d.\n"
                            % (self.inputSetOfTiltSeries.get().getSize(),
-                              self.outputCtfCorrectedSetOfTiltSeries.getSize()))
+                              self.outputSetOfTomograms.getSize()))
         else:
             summary.append("Output classes not ready yet.")
         return summary
 
     def _methods(self):
         methods = []
-        if hasattr(self, 'outputCtfCorrectedSetOfTiltSeries'):
+        if hasattr(self, 'outputSetOfTomograms'):
             methods.append("%d CTF corrected tomograms have been calculated using the NovaCtf software.\n"
-                           % (self.outputCtfCorrectedSetOfTiltSeries.getSize()))
+                           % (self.outputSetOfTomograms.getSize()))
         else:
             methods.append("Output classes not ready yet.")
         return methods
