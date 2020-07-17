@@ -29,4 +29,4 @@ from pyworkflow.tests import DataSet
 DataSet(name='tomo-em',
         folder='tomo-em',
         files={
-            'tsCtf': 'tutorialDataImodCTF/WTI042413_1series4.st'})
+            'tsCtf': 'novaCtfTestData/tomo1_bin4.mrc'})

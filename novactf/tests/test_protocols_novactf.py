@@ -117,16 +117,21 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
         cls.inputDataSet = DataSet.getDataSet('tomo-em')
         cls.inputSoTS = cls.inputDataSet.getFile('tsCtf')
 
+        cls.thicknessTomo = 20.0
+
         cls.protImportTS = cls._runImportTiltSeries(filesPath=os.path.split(cls.inputSoTS)[0],
-                                                    pattern="WTI042413_1series4.st",
-                                                    anglesFrom=2,
+                                                    pattern="tomo1_bin4.mrc",
+                                                    anglesFrom=0,
                                                     voltage=300,
                                                     magnification=50000,
-                                                    sphericalAberration=0.0,
+                                                    sphericalAberration=2.7,
                                                     amplitudeContrast=0.07,
-                                                    samplingRate=6.73981,
+                                                    samplingRate=8.8,
                                                     doseInitial=0,
-                                                    dosePerFrame=0.3)
+                                                    dosePerFrame=0.3,
+                                                    minAngle=-60.0,
+                                                    maxAngle=60.0,
+                                                    stepAngle=3.0)
 
         cls.protCTFEstimation = cls._runCTFEstimation(inputSoTS=cls.protImportTS.outputTiltSeries,
                                                       defocusTol=200.0,
@@ -157,7 +162,7 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
             cls.newProtocol(inputSetOfTiltSeries=cls.protCTFEstimation.outputCtfEstimatedTiltSeries,
                             ctfEstimationType=0,
                             protImodCtfEstimation=cls.protCTFEstimation,
-                            tomoThickness=20.0,
+                            tomoThickness=cls.thicknessTomo,
                             tomoShift=0.0,
                             defocusStep=15,
                             correctionType=0,
@@ -169,3 +174,9 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
 
     def test_tomoReconstructionOutputSize(self):
         self.assertTrue(self.protTomoReconstruction.outputSetOfTomograms.getSize() == 1)
+
+    def test_tomoReconstructionOutputTomogramDimensions(self):
+        ih = ImageHandler()
+        self.assertTrue(
+            ih.getDimensions(self.protTomoReconstruction.outputSetOfTomograms.getFirstItem()) ==
+            (960, 928, self.thicknessTomo, 1))
