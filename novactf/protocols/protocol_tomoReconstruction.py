@@ -29,6 +29,7 @@ import numpy as np
 import pyworkflow as pw
 import pyworkflow.protocol.params as params
 import pyworkflow.utils.path as path
+from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pwem.protocols import EMProtocol
 from pwem.emlib.image import ImageHandler
 from tomo.protocols import ProtTomoBase
@@ -47,6 +48,11 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     """
 
     _label = 'tomo ctf reconstruction'
+
+    def __init__(self, **args):
+        EMProtocol.__init__(self, **args)
+        ProtTomoBase.__init__(self, **args)
+        self.stepsExecutionMode = STEPS_PARALLEL
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -126,16 +132,24 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                                         default=0.05,
                                         label='Second parameter',
                                         help='Gaussian fall-off parameter')
+        form.addParallelSection(threads=8, mpi=1)
 
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
         for ts in self.inputSetOfTiltSeries.get():
-            self._insertFunctionStep('convertInputStep', ts.getObjId())
+            inputId = self._insertFunctionStep('convertInputStep',
+                                               ts.getObjId())
             if self.ctfEstimationType.get() == 0:
-                self._insertFunctionStep('generateImodDefocusFile', ts.getObjId())
+                fileId = self._insertFunctionStep('generateImodDefocusFile',
+                                                  ts.getObjId(),
+                                                  prerequisites=[inputId])
             elif self.ctfEstimationType.get() == 1:
-                self._insertFunctionStep('generateCtffindDefocusFile', ts.getObjId())
-            self._insertFunctionStep('computeDefocusStep', ts.getObjId())
+                fileId = self._insertFunctionStep('generateCtffindDefocusFile',
+                                                  ts.getObjId(),
+                                                  prerequisites=[inputId])
+            self._insertFunctionStep('computeDefocusStep',
+                                     ts.getObjId(),
+                                     prerequisites=[fileId])
             self._insertFunctionStep('computeCtfCorrectionStep', ts.getObjId())
             self._insertFunctionStep('computeFlipStep', ts.getObjId())
             self._insertFunctionStep('computeFilteringStep', ts.getObjId())
@@ -156,7 +170,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         ts.applyTransform(outputTsFileName)
 
         """Generate angle file"""
-        angleFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
+        angleFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
         ts.generateTltFile(angleFilePath)
 
     def generateImodDefocusFile(self, tsObjId):
@@ -189,7 +203,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
 
             for counter, vector in enumerate(defocusInfo):
                 line = "%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n" % \
-                       (counter+1, vector[0], vector[1], vector[2], vector[3], vector[4], vector[5])
+                       (counter + 1, vector[0], vector[1], vector[2], vector[3], vector[4], vector[5])
                 f.writelines(line)
 
     def computeDefocusStep(self, tsObjId):
@@ -202,7 +216,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             'InputProjections': os.path.join(tmpPrefix, "%s.st" % tsId),
             'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[1]),
             'Thickness': self.tomoThickness.get(),
-            'TiltFile': os.path.join(tmpPrefix, "%s.rawtlt" % tsId),
+            'TiltFile': os.path.join(tmpPrefix, "%s.tlt" % tsId),
             'Shift': "0.0," + str(self.tomoShift.get()),
             'CorrectionType': self.getCorrectionType(),
             'DefocusFileFormat': "ctffind4",
@@ -231,7 +245,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
-        tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
+        tltFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
         outputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
         defocusFilePath = os.path.join(tmpPrefix, "%s.defocus_" % tsId)
 
@@ -286,7 +300,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         outputFilePath = os.path.join(tmpPrefix, "%s_flip_filter.st_" % tsId)
-        tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
+        tltFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
 
         i = 0
         while os.path.exists(os.path.join(tmpPrefix, "%s_flip.st_%d" % (tsId, i))):
@@ -315,7 +329,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         extraPrefix = self._getExtraPath(ts.getTsId())
         tmpPrefix = self._getTmpPath(ts.getTsId())
         outputFilePathFlipped = os.path.join(tmpPrefix, "%s.mrc" % tsId)
-        tltFilePath = os.path.join(tmpPrefix, "%s.rawtlt" % tsId)
+        tltFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
 
         params3dctf = {
             'Algorithm': "3dctf",
@@ -348,7 +362,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         argsTrimvol += "-yz "
 
         imodPlugin.runImod(self, 'trimvol', argsTrimvol)
-
 
     def createOutputStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
