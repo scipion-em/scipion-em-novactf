@@ -136,9 +136,13 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
 
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
+        tmpPrefix = self._getTmpPath(ts.getTsId())
+        tsId = ts.getTsId()
+
         for ts in self.inputSetOfTiltSeries.get():
             inputId = self._insertFunctionStep('convertInputStep',
                                                ts.getObjId())
+
             if self.ctfEstimationType.get() == 0:
                 fileId = self._insertFunctionStep('generateImodDefocusFile',
                                                   ts.getObjId(),
@@ -147,14 +151,53 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                 fileId = self._insertFunctionStep('generateCtffindDefocusFile',
                                                   ts.getObjId(),
                                                   prerequisites=[inputId])
-            self._insertFunctionStep('computeDefocusStep',
+
+            defocusId = self._insertFunctionStep('computeDefocusStep',
+                                                 ts.getObjId(),
+                                                 prerequisites=[fileId])
+
+            allCtfId = []
+            defocusFilePath = os.path.join(tmpPrefix, "%s.defocus_" % tsId)
+            counterCtf = 0
+
+            while os.path.exists(defocusFilePath + str(counterCtf)):
+                ctfId = self._insertFunctionStep('computeCtfCorrectionStep',
+                                                 ts.getObjId(),
+                                                 counterCtf,
+                                                 prerequisites=[defocusId])
+                allCtfId.append(ctfId)
+                counterCtf += 1
+
+            allFlipId = []
+            inputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
+            counterFlip = 0
+
+            while os.path.exists(inputFilePath + str(counterFlip)):
+                flipId = self._insertFunctionStep('computeFlipStep',
+                                                  ts.getObjId(),
+                                                  counterFlip,
+                                                  prerequisites=allCtfId)
+                allFlipId.append(flipId)
+                counterFlip += 1
+
+            allFilterId = []
+            flippedFilePath = os.path.join(tmpPrefix, "%s_flip.st_" % tsId)
+            counterFilter = 0
+
+            while os.path.exists(flippedFilePath + str(counterFilter)):
+                filterId = self._insertFunctionStep('computeFilteringStep',
+                                                    ts.getObjId(),
+                                                    counterFilter,
+                                                    prerequisites=allFlipId)
+                allFilterId.append(filterId)
+                counterFilter += 1
+
+            reconstructionId = self._insertFunctionStep('computeReconstructionStep',
                                      ts.getObjId(),
-                                     prerequisites=[fileId])
-            self._insertFunctionStep('computeCtfCorrectionStep', ts.getObjId())
-            self._insertFunctionStep('computeFlipStep', ts.getObjId())
-            self._insertFunctionStep('computeFilteringStep', ts.getObjId())
-            self._insertFunctionStep('computeReconstructionStep', ts.getObjId())
-            self._insertFunctionStep('createOutputStep', ts.getObjId())
+                                     prerequisites=allFilterId)
+            self._insertFunctionStep('createOutputStep',
+                                     ts.getObjId(),
+                                     prerequisites=reconstructionId)
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
@@ -241,7 +284,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
 
         Plugin.runNovactf(self, 'novaCTF', argsDefocus % paramsDefocus)
 
-    def computeCtfCorrectionStep(self, tsObjId):
+    def computeCtfCorrectionStep(self, tsObjId, counter):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
@@ -249,79 +292,71 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         outputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
         defocusFilePath = os.path.join(tmpPrefix, "%s.defocus_" % tsId)
 
-        i = 0
-        while os.path.exists(defocusFilePath + str(i)):
-            paramsCtfCorrection = {
-                'Algorithm': "ctfCorrection",
-                'InputProjections': os.path.join(tmpPrefix, "%s.st" % tsId),
-                'OutputFile': outputFilePath + str(i),
-                'DefocusFile': defocusFilePath + str(i),
-                'TiltFile': tltFilePath,
-                'CorrectionType': self.getCorrectionType(),
-                'DefocusFileFormat': "ctffind4",
-                'CorrectAstigmatism': 1,
-                'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
-                'AmplitudeContrast': self.inputSetOfTiltSeries.get().getAcquisition().getAmplitudeContrast(),
-                'SphericalAberration': self.inputSetOfTiltSeries.get().getAcquisition().getSphericalAberration(),
-                'Voltage': self.inputSetOfTiltSeries.get().getAcquisition().getVoltage()
-            }
+        paramsCtfCorrection = {
+            'Algorithm': "ctfCorrection",
+            'InputProjections': os.path.join(tmpPrefix, "%s.st" % tsId),
+            'OutputFile': outputFilePath + str(counter),
+            'DefocusFile': defocusFilePath + str(counter),
+            'TiltFile': tltFilePath,
+            'CorrectionType': self.getCorrectionType(),
+            'DefocusFileFormat': "ctffind4",
+            'CorrectAstigmatism': 1,
+            'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
+            'AmplitudeContrast': self.inputSetOfTiltSeries.get().getAcquisition().getAmplitudeContrast(),
+            'SphericalAberration': self.inputSetOfTiltSeries.get().getAcquisition().getSphericalAberration(),
+            'Voltage': self.inputSetOfTiltSeries.get().getAcquisition().getVoltage()
+        }
 
-            argsCtfCorrection = "-Algorithm %(Algorithm)s " \
-                                "-InputProjections %(InputProjections)s " \
-                                "-OutputFile %(OutputFile)s " \
-                                "-DefocusFile %(DefocusFile)s " \
-                                "-TILTFILE %(TiltFile)s " \
-                                "-CorrectionType %(CorrectionType)s " \
-                                "-DefocusFileFormat %(DefocusFileFormat)s " \
-                                "-CorrectAstigmatism %(CorrectAstigmatism)s " \
-                                "-PixelSize %(PixelSize)f " \
-                                "-AmplitudeContrast %(AmplitudeContrast)f " \
-                                "-Cs %(SphericalAberration)f " \
-                                "-Volt %(Voltage)d"
+        argsCtfCorrection = "-Algorithm %(Algorithm)s " \
+                            "-InputProjections %(InputProjections)s " \
+                            "-OutputFile %(OutputFile)s " \
+                            "-DefocusFile %(DefocusFile)s " \
+                            "-TILTFILE %(TiltFile)s " \
+                            "-CorrectionType %(CorrectionType)s " \
+                            "-DefocusFileFormat %(DefocusFileFormat)s " \
+                            "-CorrectAstigmatism %(CorrectAstigmatism)s " \
+                            "-PixelSize %(PixelSize)f " \
+                            "-AmplitudeContrast %(AmplitudeContrast)f " \
+                            "-Cs %(SphericalAberration)f " \
+                            "-Volt %(Voltage)d"
 
-            Plugin.runNovactf(self, 'novaCTF', argsCtfCorrection % paramsCtfCorrection)
+        Plugin.runNovactf(self, 'novaCTF', argsCtfCorrection % paramsCtfCorrection)
 
-            i += 1
-
-    def computeFlipStep(self, tsObjId):
+    def computeFlipStep(self, tsObjId, counter):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         inputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
         outputFilePath = os.path.join(tmpPrefix, "%s_flip.st_" % tsId)
-        i = 0
-        while os.path.exists(os.path.join(inputFilePath + str(i))):
-            argsFlip = "flipyz " + inputFilePath + str(i) + " " + outputFilePath + str(i)
-            imodPlugin.runImod(self, 'clip', argsFlip)
-            i += 1
 
-    def computeFilteringStep(self, tsObjId):
+        argsFlip = "flipyz " + inputFilePath + str(counter) + " " + outputFilePath + str(counter)
+        imodPlugin.runImod(self, 'clip', argsFlip)
+
+    def computeFilteringStep(self, tsObjId, counter):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
+        flippedFilePath = os.path.join(tmpPrefix, "%s_flip.st_" % tsId)
         outputFilePath = os.path.join(tmpPrefix, "%s_flip_filter.st_" % tsId)
         tltFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
 
-        i = 0
-        while os.path.exists(os.path.join(tmpPrefix, "%s_flip.st_%d" % (tsId, i))):
-            paramsFilterProjections = {
-                'Algorithm': "filterProjections",
-                'InputProjections': os.path.join(tmpPrefix, "%s_flip.st_%d" % (tsId, i)),
-                'OutputFile': outputFilePath + str(i),
-                'TiltFile': tltFilePath,
-                'StackOrientation': "xz",
-                'Radial': str(self.radialFirstParameter.get()) + "," + str(self.radialSecondParameter.get())
-            }
+        paramsFilterProjections = {
+            'Algorithm': "filterProjections",
+            'InputProjections': flippedFilePath + str(counter),
+            'OutputFile': outputFilePath + str(counter),
+            'TiltFile': tltFilePath,
+            'StackOrientation': "xz",
+            'Radial': str(self.radialFirstParameter.get()) + "," + str(self.radialSecondParameter.get())
+        }
 
-            argsFilterProjections = "-Algorithm %(Algorithm)s " \
-                                    "-InputProjections %(InputProjections)s " \
-                                    "-OutputFile %(OutputFile)s " \
-                                    "-TILTFILE %(TiltFile)s " \
-                                    "-StackOrientation %(StackOrientation)s " \
-                                    "-RADIAL %(Radial)s"
-            Plugin.runNovactf(self, 'novaCTF', argsFilterProjections % paramsFilterProjections)
+        argsFilterProjections = "-Algorithm %(Algorithm)s " \
+                                "-InputProjections %(InputProjections)s " \
+                                "-OutputFile %(OutputFile)s " \
+                                "-TILTFILE %(TiltFile)s " \
+                                "-StackOrientation %(StackOrientation)s " \
+                                "-RADIAL %(Radial)s"
+        Plugin.runNovactf(self, 'novaCTF', argsFilterProjections % paramsFilterProjections)
 
-            i += 1
 
     def computeReconstructionStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
