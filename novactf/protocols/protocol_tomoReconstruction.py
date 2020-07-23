@@ -51,7 +51,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
-        ProtTomoBase.__init__(self, **args)
+        ProtTomoBase.__init__(self)
         self.stepsExecutionMode = STEPS_PARALLEL
 
     # -------------------------- DEFINE param functions -----------------------
@@ -136,10 +136,11 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
 
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
-        tmpPrefix = self._getTmpPath(ts.getTsId())
-        tsId = ts.getTsId()
 
         for ts in self.inputSetOfTiltSeries.get():
+            tsId = ts.getTsId()
+            tmpPrefix = self._getTmpPath(tsId)
+
             inputId = self._insertFunctionStep('convertInputStep',
                                                ts.getObjId())
 
@@ -193,11 +194,11 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                 counterFilter += 1
 
             reconstructionId = self._insertFunctionStep('computeReconstructionStep',
-                                     ts.getObjId(),
-                                     prerequisites=allFilterId)
+                                                        ts.getObjId(),
+                                                        prerequisites=allFilterId)
             self._insertFunctionStep('createOutputStep',
                                      ts.getObjId(),
-                                     prerequisites=reconstructionId)
+                                     prerequisites=[reconstructionId])
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
@@ -357,7 +358,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                                 "-RADIAL %(Radial)s"
         Plugin.runNovactf(self, 'novaCTF', argsFilterProjections % paramsFilterProjections)
 
-
     def computeReconstructionStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
@@ -428,6 +428,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             outputSetOfTomograms.copyInfo(self.inputSetOfTiltSeries.get())
             self._defineOutputs(outputSetOfTomograms=outputSetOfTomograms)
             self._defineSourceRelation(self.inputSetOfTiltSeries, outputSetOfTomograms)
+
         return self.outputSetOfTomograms
 
     def getCorrectionType(self):
@@ -435,6 +436,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             correctionType = "phaseflip"
         elif self.correctionType.get() == 1:
             correctionType = "multiplication"
+
         return correctionType
 
     def getDefocusFile(self, ts):
@@ -442,6 +444,8 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         outputDefocusFile = os.path.join(self._getTmpPath(tsId), tsId + ".defocus")
 
         return outputDefocusFile
+
+    # det getNumberOfDefocusFiles
 
     # --------------------------- INFO functions ----------------------------
     def _validate(self):
