@@ -140,11 +140,8 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
 
         for ts in self.inputSetOfTiltSeries.get():
             tsId = ts.getTsId()
-            tmpPrefix = self._getTmpPath(tsId)
 
             numberOfIntermediateStacks = self.getNumberOfIntermediateStacks(ts)
-
-            print("------------------------------------" + str(numberOfIntermediateStacks))
 
             inputId = self._insertFunctionStep('convertInputStep',
                                                ts.getObjId())
