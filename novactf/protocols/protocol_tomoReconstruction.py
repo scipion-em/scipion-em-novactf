@@ -26,6 +26,7 @@
 
 import os
 import numpy as np
+import math
 import pyworkflow as pw
 import pyworkflow.protocol.params as params
 import pyworkflow.utils.path as path
@@ -141,6 +142,10 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             tsId = ts.getTsId()
             tmpPrefix = self._getTmpPath(tsId)
 
+            numberOfIntermediateStacks = self.getNumberOfIntermediateStacks(ts)
+
+            print("------------------------------------" + str(numberOfIntermediateStacks))
+
             inputId = self._insertFunctionStep('convertInputStep',
                                                ts.getObjId())
 
@@ -158,44 +163,36 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                                                  prerequisites=[fileId])
 
             allCtfId = []
-            defocusFilePath = os.path.join(tmpPrefix, "%s.defocus_" % tsId)
-            counterCtf = 0
 
-            while os.path.exists(defocusFilePath + str(counterCtf)):
+            for counterCtf in range(0, numberOfIntermediateStacks + 1):
                 ctfId = self._insertFunctionStep('computeCtfCorrectionStep',
                                                  ts.getObjId(),
                                                  counterCtf,
                                                  prerequisites=[defocusId])
                 allCtfId.append(ctfId)
-                counterCtf += 1
 
             allFlipId = []
-            inputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
-            counterFlip = 0
 
-            while os.path.exists(inputFilePath + str(counterFlip)):
+            for counterFlip in range(0, numberOfIntermediateStacks + 1):
                 flipId = self._insertFunctionStep('computeFlipStep',
                                                   ts.getObjId(),
                                                   counterFlip,
                                                   prerequisites=allCtfId)
                 allFlipId.append(flipId)
-                counterFlip += 1
 
             allFilterId = []
-            flippedFilePath = os.path.join(tmpPrefix, "%s_flip.st_" % tsId)
-            counterFilter = 0
 
-            while os.path.exists(flippedFilePath + str(counterFilter)):
+            for counterFilter in range(0, numberOfIntermediateStacks + 1):
                 filterId = self._insertFunctionStep('computeFilteringStep',
                                                     ts.getObjId(),
                                                     counterFilter,
                                                     prerequisites=allFlipId)
                 allFilterId.append(filterId)
-                counterFilter += 1
 
             reconstructionId = self._insertFunctionStep('computeReconstructionStep',
                                                         ts.getObjId(),
                                                         prerequisites=allFilterId)
+
             self._insertFunctionStep('createOutputStep',
                                      ts.getObjId(),
                                      prerequisites=[reconstructionId])
@@ -422,6 +419,22 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
+    def getNumberOfIntermediateStacks(self, ts):
+        maxTilt = abs(max(ts.getFirstItem().getTiltAngle(), ts[ts.getSize()].getTiltAngle()))
+
+        ih = ImageHandler()
+        xDim, _, _, _ = ih.getDimensions(ts.getFirstItem().getFileName())
+
+        height = xDim * math.sin(math.radians(maxTilt))
+
+        numberOfIntermediateStacks = \
+            math.floor((height * self.inputSetOfTiltSeries.get().getSamplingRate() / 10) / self.defocusStep.get())
+
+        if numberOfIntermediateStacks % 2 == 1:
+            numberOfIntermediateStacks -= 1
+
+        return numberOfIntermediateStacks
+
     def getOutputSetOfTomograms(self):
         if not hasattr(self, "outputSetOfTomograms"):
             outputSetOfTomograms = self._createSetOfTomograms()
