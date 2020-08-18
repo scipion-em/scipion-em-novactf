@@ -453,16 +453,14 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
 
         return outputDefocusFile
 
-    # det getNumberOfDefocusFiles
-
     # --------------------------- INFO functions ----------------------------
     def _validate(self):
         validateMsgs = []
 
         if self.ctfEstimationType.get() == 1 and \
                 not self.inputSetOfTiltSeries.get().getFirstItem().getFirstItem().hasCTF():
-            validateMsgs = "You need to generate an estimation of the CTF associated to the tilt series to calculate " \
-                           "its corrected reconstruction"
+            validateMsgs.append("You need to generate an estimation of the CTF associated to the tilt series to "
+                                "calculate its corrected reconstruction")
 
         return validateMsgs
 
