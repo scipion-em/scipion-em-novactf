@@ -439,6 +439,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         counter = 0
         while os.path.exists(defocusFilePath + str(counter)):
             numberOfIntermediateStacks += 1
+            counter += 1
 
         print("--------------------------------------------------------\n\n\n")
         print(numberOfIntermediateStacks)
