@@ -139,8 +139,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     def _insertAllSteps(self):
 
         for ts in self.inputSetOfTiltSeries.get():
-            numberOfIntermediateStacks = self.getNumberOfIntermediateStacks(ts)
-
             inputId = self._insertFunctionStep('convertInputStep',
                                                ts.getObjId())
 
@@ -156,6 +154,9 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             defocusId = self._insertFunctionStep('computeDefocusStep',
                                                  ts.getObjId(),
                                                  prerequisites=[fileId])
+
+            numberOfIntermediateStacks = self._insertFunctionStep('getNumberOfIntermediateStacks',
+                                                                  ts.getObjId())
 
             allCtfId = []
 
@@ -414,19 +415,34 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
-    def getNumberOfIntermediateStacks(self, ts):
-        maxTilt = abs(max(ts.getFirstItem().getTiltAngle(), ts[ts.getSize()].getTiltAngle()))
+    def getNumberOfIntermediateStacks(self, tsObjId):
+        # maxTilt = abs(max(ts.getFirstItem().getTiltAngle(), ts[ts.getSize()].getTiltAngle()))
+        #
+        # ih = ImageHandler()
+        # xDim, _, _, _ = ih.getDimensions(ts.getFirstItem().getFileName())
+        #
+        # height = xDim * math.sin(math.radians(maxTilt))
+        #
+        # numberOfIntermediateStacks = \
+        #     math.floor((height * self.inputSetOfTiltSeries.get().getSamplingRate() / 10) / self.defocusStep.get())
+        #
+        # if numberOfIntermediateStacks % 2 == 1:
+        #     numberOfIntermediateStacks -= 1
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        tsId = ts.getTsId()
 
-        ih = ImageHandler()
-        xDim, _, _, _ = ih.getDimensions(ts.getFirstItem().getFileName())
+        tmpPrefix = self._getTmpPath(ts.getTsId())
 
-        height = xDim * math.sin(math.radians(maxTilt))
+        defocusFilePath = os.path.join(tmpPrefix, "%s.defocus_" % tsId)
+        numberOfIntermediateStacks = 0
 
-        numberOfIntermediateStacks = \
-            math.floor((height * self.inputSetOfTiltSeries.get().getSamplingRate() / 10) / self.defocusStep.get())
+        counter = 0
+        while os.path.exists(defocusFilePath + str(counter)):
+            numberOfIntermediateStacks += 1
 
-        if numberOfIntermediateStacks % 2 == 1:
-            numberOfIntermediateStacks -= 1
+        print("--------------------------------------------------------\n\n\n")
+        print(numberOfIntermediateStacks)
+        print("\n\n\n--------------------------------------------------------")
 
         return numberOfIntermediateStacks
 
