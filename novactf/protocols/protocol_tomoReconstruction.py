@@ -40,7 +40,7 @@ from novactf import Plugin
 from imod import Plugin as imodPlugin
 
 
-class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
+class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     """
     Tomogram reconstruction and ctf correction procedure based on the novaCTF procedure.
 
@@ -59,112 +59,22 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
     def _defineParams(self, form):
         form.addSection('Input')
 
-        form.addParam('inputSetOfTiltSeries',
-                      params.PointerParam,
-                      pointerClass='SetOfTiltSeries',
-                      important=True,
-                      label='Input set of tilt-Series')
-
-        form.addParam('ctfEstimationType',
-                      params.EnumParam,
-                      choices=['IMOD', 'Other'],
-                      default=1,
-                      label='CTF estimation',
-                      important=True,
-                      display=params.EnumParam.DISPLAY_HLIST,
-                      help='CTF estimation origin.')
-
-        form.addParam('protImodCtfEstimation',
+        form.addParam('protTomoCtfDefocus',
                       params.PointerParam,
                       label="IMOD CTF estimation run",
-                      condition='ctfEstimationType==0',
-                      pointerClass='ProtImodCtfEstimation',
+                      pointerClass='ProtNovaCtfTomoDefocus',
                       help='Select the previous IMOD CTF estimation run.')
-
-        form.addParam('tomoThickness',
-                      params.FloatParam,
-                      default=100,
-                      label='Tomogram thickness',
-                      important=True,
-                      display=params.EnumParam.DISPLAY_HLIST,
-                      help='Size in pixels of the tomogram in the z axis (beam direction).')
-
-        form.addParam('tomoShift',
-                      params.FloatParam,
-                      default=0,
-                      label='Tomogram shift',
-                      important=True,
-                      display=params.EnumParam.DISPLAY_HLIST,
-                      help='Shift in pixels of the tomogram in the z axis (beam direction).')
-
-        form.addParam('defocusStep',
-                      params.IntParam,
-                      default=15,
-                      label='Defocus step',
-                      important=True,
-                      display=params.EnumParam.DISPLAY_HLIST,
-                      help='Minimum defocus difference used for reconstruction')
-
-        form.addParam('correctionType',
-                      params.EnumParam,
-                      choices=['Phase filp', 'Multiplication'],
-                      default=0,
-                      label='Correction type',
-                      important=True,
-                      display=params.EnumParam.DISPLAY_HLIST,
-                      help='Correction type to be applied for reconstruction')
-
-        groupRadialFrequencies = form.addGroup('Radial filtering',
-                                               help='This entry controls low-pass filtering with the radial weighting '
-                                                    'function.  The radial weighting function is linear away from the '
-                                                    'origin out to the distance in reciprocal space specified by the '
-                                                    'first value, followed by a Gaussian fall-off determined by the '
-                                                    'second value.',
-                                               expertLevel=params.LEVEL_ADVANCED)
-
-        groupRadialFrequencies.addParam('radialFirstParameter',
-                                        params.FloatParam,
-                                        default=0.3,
-                                        label='First parameter',
-                                        help='Linear region value')
-
-        groupRadialFrequencies.addParam('radialSecondParameter',
-                                        params.FloatParam,
-                                        default=0.05,
-                                        label='Second parameter',
-                                        help='Gaussian fall-off parameter')
-        form.addParallelSection(threads=8, mpi=1)
 
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
 
         for ts in self.inputSetOfTiltSeries.get():
-            inputId = self._insertFunctionStep('convertInputStep',
-                                               ts.getObjId())
-
-            if self.ctfEstimationType.get() == 0:
-                fileId = self._insertFunctionStep('generateImodDefocusFile',
-                                                  ts.getObjId(),
-                                                  prerequisites=[inputId])
-            elif self.ctfEstimationType.get() == 1:
-                fileId = self._insertFunctionStep('generateCtffindDefocusFile',
-                                                  ts.getObjId(),
-                                                  prerequisites=[inputId])
-
-            defocusId = self._insertFunctionStep('computeDefocusStep',
-                                                 ts.getObjId(),
-                                                 prerequisites=[fileId])
-
-            numberOfIntermediateStacks = self._insertFunctionStep('getNumberOfIntermediateStacks',
-                                                                  ts.getObjId())
-
             allCtfId = []
 
             for counterCtf in range(0, numberOfIntermediateStacks + 1):
                 ctfId = self._insertFunctionStep('computeCtfCorrectionStep',
                                                  ts.getObjId(),
-                                                 counterCtf,
-                                                 prerequisites=[defocusId])
+                                                 counterCtf)
                 allCtfId.append(ctfId)
 
             allFlipId = []
@@ -415,38 +325,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
-    def getNumberOfIntermediateStacks(self, tsObjId):
-        # maxTilt = abs(max(ts.getFirstItem().getTiltAngle(), ts[ts.getSize()].getTiltAngle()))
-        #
-        # ih = ImageHandler()
-        # xDim, _, _, _ = ih.getDimensions(ts.getFirstItem().getFileName())
-        #
-        # height = xDim * math.sin(math.radians(maxTilt))
-        #
-        # numberOfIntermediateStacks = \
-        #     math.floor((height * self.inputSetOfTiltSeries.get().getSamplingRate() / 10) / self.defocusStep.get())
-        #
-        # if numberOfIntermediateStacks % 2 == 1:
-        #     numberOfIntermediateStacks -= 1
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
-        tsId = ts.getTsId()
-
-        tmpPrefix = self._getTmpPath(ts.getTsId())
-
-        defocusFilePath = os.path.join(tmpPrefix, "%s.defocus_" % tsId)
-        numberOfIntermediateStacks = 0
-
-        counter = 0
-        while os.path.exists(defocusFilePath + str(counter)):
-            numberOfIntermediateStacks += 1
-            counter += 1
-
-        print("--------------------------------------------------------\n\n\n")
-        print(numberOfIntermediateStacks)
-        print("\n\n\n--------------------------------------------------------")
-
-        return numberOfIntermediateStacks
-
     def getOutputSetOfTomograms(self):
         if not hasattr(self, "outputSetOfTomograms"):
             outputSetOfTomograms = self._createSetOfTomograms()
@@ -455,20 +333,6 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             self._defineSourceRelation(self.inputSetOfTiltSeries, outputSetOfTomograms)
 
         return self.outputSetOfTomograms
-
-    def getCorrectionType(self):
-        if self.correctionType.get() == 0:
-            correctionType = "phaseflip"
-        elif self.correctionType.get() == 1:
-            correctionType = "multiplication"
-
-        return correctionType
-
-    def getDefocusFile(self, ts):
-        tsId = ts.getTsId()
-        outputDefocusFile = os.path.join(self._getTmpPath(tsId), tsId + ".defocus")
-
-        return outputDefocusFile
 
     # --------------------------- INFO functions ----------------------------
     def _validate(self):

@@ -40,7 +40,7 @@ from novactf import Plugin
 from imod import Plugin as imodPlugin
 
 
-class ProtTomoCtfDefocus(EMProtocol, ProtTomoBase):
+class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     """
     Tomogram reconstruction and ctf correction procedure based on the novaCTF procedure.
 
@@ -134,6 +134,8 @@ class ProtTomoCtfDefocus(EMProtocol, ProtTomoBase):
                                         label='Second parameter',
                                         help='Gaussian fall-off parameter')
 
+        form.addParallelSection(threads=8, mpi=1)
+
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
 
@@ -142,18 +144,20 @@ class ProtTomoCtfDefocus(EMProtocol, ProtTomoBase):
                                      ts.getObjId())
 
             if self.ctfEstimationType.get() == 0:
-                self._insertFunctionStep('generateImodDefocusFile',
+                self._insertFunctionStep('generateImodDefocusFileStep',
                                          ts.getObjId())
 
             elif self.ctfEstimationType.get() == 1:
-                self._insertFunctionStep('generateCtffindDefocusFile',
+                self._insertFunctionStep('generateCtffindDefocusFileStep',
                                          ts.getObjId())
 
             self._insertFunctionStep('computeDefocusStep',
                                      ts.getObjId())
 
-            self._insertFunctionStep('getNumberOfIntermediateStacks',
+            self._insertFunctionStep('getNumberOfIntermediateStacksStep',
                                      ts.getObjId())
+
+        self._insertFunctionStep('triggerNextProtocolStep')
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
@@ -172,7 +176,7 @@ class ProtTomoCtfDefocus(EMProtocol, ProtTomoBase):
         angleFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
         ts.generateTltFile(angleFilePath)
 
-    def generateImodDefocusFile(self, tsObjId):
+    def generateImodDefocusFileStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         outputDefocusFile = self.getDefocusFile(ts)
@@ -180,7 +184,7 @@ class ProtTomoCtfDefocus(EMProtocol, ProtTomoBase):
         outputDefocusFilePrefix = self.protImodCtfEstimation.get()._getExtraPath(tsId)
         path.copyFile(os.path.join(outputDefocusFilePrefix, "%s.defocus" % tsId), outputDefocusFile)
 
-    def generateCtffindDefocusFile(self, tsObjId):
+    def generateCtffindDefocusFileStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         outputDefocusFile = self.getDefocusFile(ts)
         defocusInfo = []
@@ -240,36 +244,36 @@ class ProtTomoCtfDefocus(EMProtocol, ProtTomoBase):
 
         Plugin.runNovactf(self, 'novaCTF', argsDefocus % paramsDefocus)
 
-    def getNumberOfIntermediateStacks(self, tsObjId):
+    def getNumberOfIntermediateStacksStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
 
         tmpPrefix = self._getTmpPath(ts.getTsId())
 
         defocusFilePath = os.path.join(tmpPrefix, "%s.defocus_" % tsId)
-        numberOfIntermediateStacks = 0
+        self.numberOfIntermediateStacks = 0
 
         counter = 0
         while os.path.exists(defocusFilePath + str(counter)):
-            numberOfIntermediateStacks += 1
+            self.numberOfIntermediateStacks += 1
             counter += 1
 
         print("--------------------------------------------------------\n\n\n")
-        print(numberOfIntermediateStacks)
+        print(self.numberOfIntermediateStacks)
         print("\n\n\n--------------------------------------------------------")
 
-        return numberOfIntermediateStacks
+    def triggerNextProtocolStep(self):
+        manager = Manager()
+        project = manager.loadProject(self.getProject().getName())
+        input2D = self.input2dProtocol.get()
+        copyProt = project.copyProtocol(project.getProtocol(input2D.getObjId()))
+        copyProt.inputParticles.set(project.getProtocol(self.getObjId()))
+        copyProt.inputParticles.setExtended(newSubsetName)
+        project.scheduleProtocol(copyProt, self._runPrerequisites)
+        # Next schedule will be after this one
+        self._runPrerequisites.append(copyProt.getObjId())
 
     # --------------------------- UTILS functions ----------------------------
-    def getOutputSetOfTomograms(self):
-        if not hasattr(self, "outputSetOfTomograms"):
-            outputSetOfTomograms = self._createSetOfTomograms()
-            outputSetOfTomograms.copyInfo(self.inputSetOfTiltSeries.get())
-            self._defineOutputs(outputSetOfTomograms=outputSetOfTomograms)
-            self._defineSourceRelation(self.inputSetOfTiltSeries, outputSetOfTomograms)
-
-        return self.outputSetOfTomograms
-
     def getCorrectionType(self):
         if self.correctionType.get() == 0:
             correctionType = "phaseflip"
