@@ -105,7 +105,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     # --------------------------- STEPS functions ----------------------------
     def computeCtfCorrectionStep(self, tsObjId, counter):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         tltFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)

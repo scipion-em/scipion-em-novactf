@@ -164,16 +164,14 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         extraPrefix = self._getExtraPath(tsId)
-        tmpPrefix = self._getTmpPath(tsId)
-        path.makePath(tmpPrefix)
         path.makePath(extraPrefix)
-        outputTsFileName = os.path.join(tmpPrefix, "%s.st" % tsId)
+        outputTsFileName = os.path.join(extraPrefix, "%s.st" % tsId)
 
         """Apply the transformation form the input tilt-series"""
         ts.applyTransform(outputTsFileName)
 
         """Generate angle file"""
-        angleFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
+        angleFilePath = os.path.join(extraPrefix, "%s.tlt" % tsId)
         ts.generateTltFile(angleFilePath)
 
     def generateImodDefocusFileStep(self, tsObjId):
@@ -212,14 +210,14 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     def computeDefocusStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
-        tmpPrefix = self._getTmpPath(ts.getTsId())
+        extraPrefix = self._getExtraPath(ts.getTsId())
 
         paramsDefocus = {
             'Algorithm': "defocus",
-            'InputProjections': os.path.join(tmpPrefix, "%s.st" % tsId),
+            'InputProjections': os.path.join(extraPrefix, "%s.st" % tsId),
             'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[1]),
             'Thickness': self.tomoThickness.get(),
-            'TiltFile': os.path.join(tmpPrefix, "%s.tlt" % tsId),
+            'TiltFile': os.path.join(extraPrefix, "%s.tlt" % tsId),
             'Shift': "0.0," + str(self.tomoShift.get()),
             'CorrectionType': self.getCorrectionType(),
             'DefocusFileFormat': "ctffind4",
@@ -248,9 +246,9 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
 
-        tmpPrefix = self._getTmpPath(ts.getTsId())
+        extraPrefix = self._getExtraPath(ts.getTsId())
 
-        defocusFilePath = os.path.join(tmpPrefix, "%s.defocus_" % tsId)
+        defocusFilePath = os.path.join(extraPrefix, "%s.defocus_" % tsId)
         self.numberOfIntermediateStacks = 0
 
         counter = 0
@@ -283,7 +281,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
     def getDefocusFile(self, ts):
         tsId = ts.getTsId()
-        outputDefocusFile = os.path.join(self._getTmpPath(tsId), tsId + ".defocus")
+        outputDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
 
         return outputDefocusFile
 
