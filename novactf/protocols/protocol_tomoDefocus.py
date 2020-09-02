@@ -265,13 +265,12 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     def triggerNextProtocolStep(self):
         manager = Manager()
         project = manager.loadProject(self.getProject().getName())
-        input2D = self.input2dProtocol.get()
-        copyProt = project.copyProtocol(project.getProtocol(input2D.getObjId()))
-        copyProt.inputParticles.set(project.getProtocol(self.getObjId()))
-        copyProt.inputParticles.setExtended(newSubsetName)
-        project.scheduleProtocol(copyProt, self._runPrerequisites)
+
+        protTomoCtfReconstruction = self.newProtocol(ProtTomoCtfReconstruction,
+                                                     protTomoCtfDefocus=self)
+        project.scheduleProtocol(protTomoCtfReconstruction, self._runPrerequisites)
         # Next schedule will be after this one
-        self._runPrerequisites.append(copyProt.getObjId())
+        self._runPrerequisites.append(protTomoCtfReconstruction.getObjId())
 
     # --------------------------- UTILS functions ----------------------------
     def getCorrectionType(self):
