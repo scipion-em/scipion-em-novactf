@@ -71,7 +71,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         for index, ts in enumerate(self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()):
             allCtfId = []
 
-            for counterCtf in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index] + 1):
+            for counterCtf in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get() + 1):
                 ctfId = self._insertFunctionStep('computeCtfCorrectionStep',
                                                  ts.getObjId(),
                                                  counterCtf)
@@ -79,7 +79,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
             allFlipId = []
 
-            for counterFlip in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index] + 1):
+            for counterFlip in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get() + 1):
                 flipId = self._insertFunctionStep('computeFlipStep',
                                                   ts.getObjId(),
                                                   counterFlip,
@@ -88,7 +88,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
             allFilterId = []
 
-            for counterFilter in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index] + 1):
+            for counterFilter in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get() + 1):
                 filterId = self._insertFunctionStep('computeFilteringStep',
                                                     ts.getObjId(),
                                                     counterFilter,
@@ -121,10 +121,10 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             'CorrectionType': self.getCorrectionType(),
             'DefocusFileFormat': "ctffind4",
             'CorrectAstigmatism': 1,
-            'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
-            'AmplitudeContrast': self.inputSetOfTiltSeries.get().getAcquisition().getAmplitudeContrast(),
-            'SphericalAberration': self.inputSetOfTiltSeries.get().getAcquisition().getSphericalAberration(),
-            'Voltage': self.inputSetOfTiltSeries.get().getAcquisition().getVoltage()
+            'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
+            'AmplitudeContrast': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getAcquisition().getAmplitudeContrast(),
+            'SphericalAberration': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getAcquisition().getSphericalAberration(),
+            'Voltage': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getAcquisition().getVoltage()
         }
 
         argsCtfCorrection = "-Algorithm %(Algorithm)s " \
@@ -143,7 +143,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         Plugin.runNovactf(self, 'novaCTF', argsCtfCorrection % paramsCtfCorrection)
 
     def computeFlipStep(self, tsObjId, counter):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         inputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
@@ -153,7 +153,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         imodPlugin.runImod(self, 'clip', argsFlip)
 
     def computeFilteringStep(self, tsObjId, counter):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         flippedFilePath = os.path.join(tmpPrefix, "%s_flip.st_" % tsId)
@@ -178,7 +178,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         Plugin.runNovactf(self, 'novaCTF', argsFilterProjections % paramsFilterProjections)
 
     def computeReconstructionStep(self, tsObjId):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         extraPrefix = self._getExtraPath(ts.getTsId())
         tmpPrefix = self._getTmpPath(ts.getTsId())
@@ -193,7 +193,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             'Thickness': self.tomoThickness.get(),
             'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[1]),
             'Shift': "0.0," + str(self.tomoShift.get()),
-            'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
+            'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
         }
 
@@ -218,7 +218,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         imodPlugin.runImod(self, 'trimvol', argsTrimvol)
 
     def createOutputStep(self, tsObjId):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
 
         """Keep defocus file"""
@@ -241,12 +241,20 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
+    def getCorrectionType(self):
+        if self.protTomoCtfDefocus.get().correctionType.get() == 0:
+            correctionType = "phaseflip"
+        elif self.protTomoCtfDefocus.get().correctionType.get() == 1:
+            correctionType = "multiplication"
+
+        return correctionType
+
     def getOutputSetOfTomograms(self):
         if not hasattr(self, "outputSetOfTomograms"):
             outputSetOfTomograms = self._createSetOfTomograms()
-            outputSetOfTomograms.copyInfo(self.inputSetOfTiltSeries.get())
+            outputSetOfTomograms.copyInfo(self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get())
             self._defineOutputs(outputSetOfTomograms=outputSetOfTomograms)
-            self._defineSourceRelation(self.inputSetOfTiltSeries, outputSetOfTomograms)
+            self._defineSourceRelation(self.protTomoCtfDefocus.get().inputSetOfTiltSeries, outputSetOfTomograms)
 
         return self.outputSetOfTomograms
 
@@ -255,7 +263,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         summary = []
         if hasattr(self, 'outputSetOfTomograms'):
             summary.append("Input Tilt-Series: %d.\nCTF corrected reconstructions calculated: %d.\n"
-                           % (self.inputSetOfTiltSeries.get().getSize(),
+                           % (self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSize(),
                               self.outputSetOfTomograms.getSize()))
         else:
             summary.append("Output classes not ready yet.")
