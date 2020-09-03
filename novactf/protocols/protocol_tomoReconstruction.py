@@ -61,9 +61,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         form.addParam('protTomoCtfDefocus',
                       params.PointerParam,
-                      label="",
+                      label="NovaCtf defocus estimation run",
                       pointerClass='ProtNovaCtfTomoDefocus',
-                      help='')
+                      help='Select the previous NovaCtf defocus estimation run.')
 
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
