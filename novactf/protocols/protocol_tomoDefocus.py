@@ -32,6 +32,7 @@ import pyworkflow.protocol.params as params
 from pyworkflow.project import Manager
 import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
+from pyworkflow.object import Integer, List
 from pwem.protocols import EMProtocol
 from pwem.emlib.image import ImageHandler
 from tomo.protocols import ProtTomoBase
@@ -54,7 +55,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         EMProtocol.__init__(self, **args)
         ProtTomoBase.__init__(self)
         self.stepsExecutionMode = STEPS_PARALLEL
-        self.numberOfIntermediateStacks = []
+        self.numberOfIntermediateStacks = List([])
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -257,7 +258,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             numberOfIntermediateStacks += 1
             counter += 1
 
-        self.numberOfIntermediateStacks.append(numberOfIntermediateStacks)
+        self.numberOfIntermediateStacks.append(Integer(numberOfIntermediateStacks))
 
     def triggerNextProtocolStep(self):
         # Local import to avoid looping
