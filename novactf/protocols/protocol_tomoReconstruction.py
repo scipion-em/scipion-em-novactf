@@ -61,9 +61,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         form.addParam('protTomoCtfDefocus',
                       params.PointerParam,
-                      label="IMOD CTF estimation run",
+                      label="",
                       pointerClass='ProtNovaCtfTomoDefocus',
-                      help='Select the previous IMOD CTF estimation run.')
+                      help='')
 
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
@@ -251,16 +251,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         return self.outputSetOfTomograms
 
     # --------------------------- INFO functions ----------------------------
-    def _validate(self):
-        validateMsgs = []
-
-        if self.ctfEstimationType.get() == 1 and \
-                not self.inputSetOfTiltSeries.get().getFirstItem().getFirstItem().hasCTF():
-            validateMsgs.append("You need to generate an estimation of the CTF associated to the tilt series to "
-                                "calculate its corrected reconstruction")
-
-        return validateMsgs
-
     def _summary(self):
         summary = []
         if hasattr(self, 'outputSetOfTomograms'):

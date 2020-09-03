@@ -29,6 +29,7 @@ import numpy as np
 import math
 import pyworkflow as pw
 import pyworkflow.protocol.params as params
+from pyworkflow.project import Manager
 import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pwem.protocols import EMProtocol
@@ -37,7 +38,6 @@ from tomo.protocols import ProtTomoBase
 from tomo.convert import writeTiStack
 from tomo.objects import Tomogram, TiltSeries
 from novactf import Plugin
-from imod import Plugin as imodPlugin
 
 
 class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
@@ -48,7 +48,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             https://github.com/turonova/novaCTF
     """
 
-    _label = 'tomo ctf reconstruction'
+    _label = 'tomo ctf defocus'
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
@@ -256,19 +256,19 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             self.numberOfIntermediateStacks += 1
             counter += 1
 
-        print("--------------------------------------------------------\n\n\n")
-        print(self.numberOfIntermediateStacks)
-        print("\n\n\n--------------------------------------------------------")
-
     def triggerNextProtocolStep(self):
+        # Local import to avoid loop
+        from novactf.protocols import ProtNovaCtfTomoReconstruction
+
         manager = Manager()
         project = manager.loadProject(self.getProject().getName())
 
-        protTomoCtfReconstruction = self.newProtocol(ProtTomoCtfReconstruction,
-                                                     protTomoCtfDefocus=self)
-        project.scheduleProtocol(protTomoCtfReconstruction, self._runPrerequisites)
+        protTomoReconstruction = ProtNovaCtfTomoReconstruction()
+        protTomoReconstruction.protTomoCtfDefocus.set(self)
+
+        project.scheduleProtocol(protTomoReconstruction)
         # Next schedule will be after this one
-        self._runPrerequisites.append(protTomoCtfReconstruction.getObjId())
+        # self._runPrerequisites.append(protTomoReconstruction.getObjId())
 
     # --------------------------- UTILS functions ----------------------------
     def getCorrectionType(self):
