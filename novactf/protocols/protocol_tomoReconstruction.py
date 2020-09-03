@@ -68,10 +68,10 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
 
-        for ts in self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get():
+        for index, ts in enumerate(self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()):
             allCtfId = []
 
-            for counterCtf in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks.get() + 1):
+            for counterCtf in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index] + 1):
                 ctfId = self._insertFunctionStep('computeCtfCorrectionStep',
                                                  ts.getObjId(),
                                                  counterCtf)
@@ -79,7 +79,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
             allFlipId = []
 
-            for counterFlip in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks.get() + 1):
+            for counterFlip in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index] + 1):
                 flipId = self._insertFunctionStep('computeFlipStep',
                                                   ts.getObjId(),
                                                   counterFlip,
@@ -88,7 +88,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
             allFilterId = []
 
-            for counterFilter in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks.get() + 1):
+            for counterFilter in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index] + 1):
                 filterId = self._insertFunctionStep('computeFilteringStep',
                                                     ts.getObjId(),
                                                     counterFilter,

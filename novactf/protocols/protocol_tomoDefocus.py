@@ -54,7 +54,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         EMProtocol.__init__(self, **args)
         ProtTomoBase.__init__(self)
         self.stepsExecutionMode = STEPS_PARALLEL
-        self.numberOfIntermediateStacks = 0
+        self.numberOfIntermediateStacks = []
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -250,15 +250,17 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         extraPrefix = self._getExtraPath(ts.getTsId())
 
         defocusFilePath = os.path.join(extraPrefix, "%s.defocus_" % tsId)
-        self.numberOfIntermediateStacks = 0
+        numberOfIntermediateStacks = 0
 
+        counter = 0
         while os.path.exists(defocusFilePath + str(counter)):
-            print("--------------------------------------------------------------------")
-            print(self.numberOfIntermediateStacks)
-            self.numberOfIntermediateStacks += 1
+            numberOfIntermediateStacks += 1
+            counter += 1
+
+        self.numberOfIntermediateStacks.append(numberOfIntermediateStacks)
 
     def triggerNextProtocolStep(self):
-        # Local import to avoid loop
+        # Local import to avoid looping
         from novactf.protocols import ProtNovaCtfTomoReconstruction
 
         manager = Manager()
@@ -268,6 +270,8 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         protTomoReconstruction.protTomoCtfDefocus.set(self)
 
         project.scheduleProtocol(protTomoReconstruction)
+
+        self._store()
 
     # --------------------------- UTILS functions ----------------------------
     def getCorrectionType(self):
@@ -310,7 +314,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                            "Defocus files generated for each tilt-series: %d.\n"
                            % (self.inputSetOfTiltSeries.get().getSize(),
                               counter,
-                              self.numberOfIntermediateStacks))
+                              self.numberOfIntermediateStacks[0]))
         else:
             summary.append("Output not ready yet.")
         return summary
@@ -326,7 +330,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         if counter != 0:
             methods.append("%d defocus files have been generated for each of the %d tilt-series.\n"
-                           % (self.numberOfIntermediateStacks,
+                           % (self.numberOfIntermediateStacks[0],
                               counter))
         else:
             methods.append("Output not ready yet.")
