@@ -54,6 +54,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         EMProtocol.__init__(self, **args)
         ProtTomoBase.__init__(self)
         self.stepsExecutionMode = STEPS_PARALLEL
+        self.numberOfIntermediateStacks = 0
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -251,10 +252,10 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         defocusFilePath = os.path.join(extraPrefix, "%s.defocus_" % tsId)
         self.numberOfIntermediateStacks = 0
 
-        counter = 0
         while os.path.exists(defocusFilePath + str(counter)):
+            print("--------------------------------------------------------------------")
+            print(self.numberOfIntermediateStacks)
             self.numberOfIntermediateStacks += 1
-            counter += 1
 
     def triggerNextProtocolStep(self):
         # Local import to avoid loop
@@ -267,8 +268,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         protTomoReconstruction.protTomoCtfDefocus.set(self)
 
         project.scheduleProtocol(protTomoReconstruction)
-        # Next schedule will be after this one
-        # self._runPrerequisites.append(protTomoReconstruction.getObjId())
 
     # --------------------------- UTILS functions ----------------------------
     def getCorrectionType(self):
@@ -298,19 +297,38 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
     def _summary(self):
         summary = []
-        if hasattr(self, 'outputSetOfTomograms'):
-            summary.append("Input Tilt-Series: %d.\nCTF corrected reconstructions calculated: %d.\n"
+
+        counter = 0
+        for ts in self.inputSetOfTiltSeries.get():
+            tsId = ts.getTsId()
+            if os.path.exists(os.path.join(self._getExtraPath(tsId), tsId + ".defocus_0")):
+                counter += 1
+
+        if counter != 0:
+            summary.append("Input Tilt-Series: %d.\n"
+                           "Tilt-series defocus processed: %d.\n"
+                           "Defocus files generated for each tilt-series: %d.\n"
                            % (self.inputSetOfTiltSeries.get().getSize(),
-                              self.outputSetOfTomograms.getSize()))
+                              counter,
+                              self.numberOfIntermediateStacks))
         else:
-            summary.append("Output classes not ready yet.")
+            summary.append("Output not ready yet.")
         return summary
 
     def _methods(self):
         methods = []
-        if hasattr(self, 'outputSetOfTomograms'):
-            methods.append("%d CTF corrected tomograms have been calculated using the NovaCtf software.\n"
-                           % (self.outputSetOfTomograms.getSize()))
+
+        counter = 0
+        for ts in self.inputSetOfTiltSeries.get():
+            tsId = ts.getTsId()
+            if os.path.exists(os.path.join(self._getExtraPath(tsId), tsId + ".defocus_0")):
+                counter += 1
+
+        if counter != 0:
+            methods.append("%d defocus files have been generated for each of the %d tilt-series.\n"
+                           % (self.numberOfIntermediateStacks,
+                              counter))
         else:
-            methods.append("Output classes not ready yet.")
+            methods.append("Output not ready yet.")
+
         return methods
