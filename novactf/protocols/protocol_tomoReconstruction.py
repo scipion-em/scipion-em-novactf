@@ -142,7 +142,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             'DefocusFile': defocusFilePath + str(counter),
             'TiltFile': tltFilePath,
             'CorrectionType': self.getCorrectionType(),
-            'DefocusFileFormat': "ctffind4",
+            'DefocusFileFormat': self.getDefocusFileFormat(),
             'CorrectAstigmatism': 1,
             'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'AmplitudeContrast':
@@ -268,6 +268,14 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             correctionType = "multiplication"
 
         return correctionType
+
+    def getDefocusFileFormat(self):
+        if self.ctfEstimationType.get()==0:
+            outputDefocusFileFormat = "imod"
+        if self.ctfEstimationType.get() == 1:
+            outputDefocusFileFormat = "ctffind4"
+
+        return outputDefocusFileFormat
 
     def getOutputSetOfTomograms(self):
         if not hasattr(self, "outputSetOfTomograms"):
