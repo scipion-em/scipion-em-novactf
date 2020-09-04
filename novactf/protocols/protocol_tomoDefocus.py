@@ -159,21 +159,19 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             self._insertFunctionStep('getNumberOfIntermediateStacksStep',
                                      ts.getObjId())
 
-        self._insertFunctionStep('triggerNextProtocolStep')
+        self._insertFunctionStep('triggerReconstructionProtocolStep')
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
+        tmpPrefix = self._getTmpPath(tsId)
         extraPrefix = self._getExtraPath(tsId)
+        path.makePath(tmpPrefix)
         path.makePath(extraPrefix)
-        outputTsFileName = os.path.join(extraPrefix, "%s.st" % tsId)
-
-        """Apply the transformation form the input tilt-series"""
-        ts.applyTransform(outputTsFileName)
 
         """Generate angle file"""
-        angleFilePath = os.path.join(extraPrefix, "%s.tlt" % tsId)
+        angleFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
         ts.generateTltFile(angleFilePath)
 
     def generateImodDefocusFileStep(self, tsObjId):
@@ -212,14 +210,14 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     def computeDefocusStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
-        extraPrefix = self._getExtraPath(ts.getTsId())
+        tmpPrefix = self._getTmpPath(ts.getTsId())
 
         paramsDefocus = {
             'Algorithm': "defocus",
-            'InputProjections': os.path.join(extraPrefix, "%s.st" % tsId),
+            'InputProjections': ts.getFirstItem().getLocation()[1],
             'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[1]),
             'Thickness': self.tomoThickness.get(),
-            'TiltFile': os.path.join(extraPrefix, "%s.tlt" % tsId),
+            'TiltFile': os.path.join(tmpPrefix, "%s.tlt" % tsId),
             'Shift': "0.0," + str(self.tomoShift.get()),
             'CorrectionType': self.getCorrectionType(),
             'DefocusFileFormat': "ctffind4",
@@ -260,7 +258,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         self.numberOfIntermediateStacks.append(Integer(numberOfIntermediateStacks))
 
-    def triggerNextProtocolStep(self):
+    def triggerReconstructionProtocolStep(self):
         # Local import to avoid looping
         from novactf.protocols import ProtNovaCtfTomoReconstruction
 
