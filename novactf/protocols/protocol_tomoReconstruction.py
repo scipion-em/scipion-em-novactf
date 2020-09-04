@@ -65,16 +65,22 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                       pointerClass='ProtNovaCtfTomoDefocus',
                       help='Select the previous NovaCtf defocus estimation run.')
 
+        form.addParallelSection(threads=4, mpi=1)
+
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
 
         for index, ts in enumerate(self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()):
+            convertInputId = self._insertFunctionStep('convertInputStep',
+                                                      ts.getObjId())
+
             allCtfId = []
 
             for counterCtf in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get() + 1):
                 ctfId = self._insertFunctionStep('computeCtfCorrectionStep',
                                                  ts.getObjId(),
-                                                 counterCtf)
+                                                 counterCtf,
+                                                 prerequisites=[convertInputId])
                 allCtfId.append(ctfId)
 
             allFlipId = []
@@ -104,13 +110,30 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                      prerequisites=[reconstructionId])
 
     # --------------------------- STEPS functions ----------------------------
+    def convertInputStep(self, tsObjId):
+        ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+        tsId = ts.getTsId()
+        extraPrefix = self._getExtraPath(tsId)
+        tmpPrefix = self._getTmpPath(tsId)
+        path.makePath(tmpPrefix)
+        path.makePath(extraPrefix)
+
+        """Apply the transformation form the input tilt-series"""
+        outputTsFileName = os.path.join(tmpPrefix, "%s.st" % tsId)
+        ts.applyTransform(outputTsFileName)
+
+        """Generate angle file"""
+        outputTltFileName = os.path.join(tmpPrefix, '%s.rawtlt' % tsId)
+        ts.generateTltFile(outputTltFileName)
+
     def computeCtfCorrectionStep(self, tsObjId, counter):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
-        tmpPrefix = self._getTmpPath(ts.getTsId())
+        tmpPrefix = self._getTmpPath(tsId)
+        extraPrefixPreviousProt = self.protTomoCtfDefocus.get()._getExtraPath(tsId)
+        defocusFilePath = os.path.join(extraPrefixPreviousProt, "%s.defocus_" % tsId)
         tltFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
         outputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
-        defocusFilePath = os.path.join(tmpPrefix, "%s.defocus_" % tsId)
 
         paramsCtfCorrection = {
             'Algorithm': "ctfCorrection",
@@ -122,8 +145,10 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             'DefocusFileFormat': "ctffind4",
             'CorrectAstigmatism': 1,
             'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
-            'AmplitudeContrast': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getAcquisition().getAmplitudeContrast(),
-            'SphericalAberration': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getAcquisition().getSphericalAberration(),
+            'AmplitudeContrast':
+                self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getAcquisition().getAmplitudeContrast(),
+            'SphericalAberration':
+                self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getAcquisition().getSphericalAberration(),
             'Voltage': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getAcquisition().getVoltage()
         }
 
@@ -220,11 +245,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     def createOutputStep(self, tsObjId):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
-
-        """Keep defocus file"""
-        tmpDefocusFile = os.path.join(self._getTmpPath(tsId), tsId + ".defocus")
-        extraDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
-        path.moveFile(tmpDefocusFile, extraDefocusFile)
 
         """Remove intermediate files. Necessary for big sets of tilt-series"""
         path.cleanPath(self._getTmpPath(tsId))
