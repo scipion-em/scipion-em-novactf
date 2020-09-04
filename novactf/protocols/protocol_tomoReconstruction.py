@@ -205,7 +205,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             'TiltFile': os.path.join(tmpPrefix, "%s.rawtlt" % tsId),
             'Shift': "0.0," + str(self.tomoShift.get()),
             'CorrectionType': self.getCorrectionType(),
-            'DefocusFileFormat': "ctffind4",
+            'DefocusFileFormat': self.getDefocusFileFormat(),
             'CorrectAstigmatism': 1,
             'DefocusFile': self.getDefocusFile(ts),
             'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
@@ -244,7 +244,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
                 'DefocusFile': defocusFilePath + str(i),
                 'TiltFile': tltFilePath,
                 'CorrectionType': self.getCorrectionType(),
-                'DefocusFileFormat': "ctffind4",
+                'DefocusFileFormat': self.getDefocusFileFormat(),
                 'CorrectAstigmatism': 1,
                 'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
                 'AmplitudeContrast': self.inputSetOfTiltSeries.get().getAcquisition().getAmplitudeContrast(),
@@ -387,6 +387,7 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
             correctionType = "phaseflip"
         elif self.correctionType.get() == 1:
             correctionType = "multiplication"
+
         return correctionType
 
     def getDefocusFile(self, ts):
@@ -394,6 +395,15 @@ class ProtTomoCtfReconstruction(EMProtocol, ProtTomoBase):
         outputDefocusFile = os.path.join(self._getTmpPath(tsId), tsId + ".defocus")
 
         return outputDefocusFile
+
+    def getDefocusFileFormat(self):
+        if self.ctfEstimationType.get()==0:
+            outputDefocusFileFormat = "imod"
+        if self.ctfEstimationType.get() == 1:
+            outputDefocusFileFormat = "ctffind4"
+
+        return outputDefocusFileFormat
+
 
     # --------------------------- INFO functions ----------------------------
     def _validate(self):
