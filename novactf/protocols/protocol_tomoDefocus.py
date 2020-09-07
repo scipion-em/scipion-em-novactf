@@ -267,6 +267,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         project = manager.loadProject(self.getProject().getName())
 
         protTomoReconstruction = ProtNovaCtfTomoReconstruction()
+        protTomoReconstruction.setObjLabel('novactf - tomo ctf reconstruction')
         protTomoReconstruction.protTomoCtfDefocus.set(self)
         protTomoReconstruction.radialFirstParameter.set(self.radialFirstParameter.get())
         protTomoReconstruction.radialSecondParameter.set(self.radialSecondParameter.get())
