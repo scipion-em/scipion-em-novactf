@@ -127,7 +127,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         ts.applyTransform(outputTsFileName)
 
         """Generate angle file"""
-        outputTltFileName = os.path.join(tmpPrefix, '%s.rawtlt' % tsId)
+        outputTltFileName = os.path.join(tmpPrefix, '%s.tlt' % tsId)
         ts.generateTltFile(outputTltFileName)
 
     def computeCtfCorrectionStep(self, tsObjId, counter):
@@ -219,11 +219,11 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             'InputProjections': os.path.join(tmpPrefix, "%s_flip_filter.st" % tsId),
             'OutputFile': outputFilePathFlipped,
             'TiltFile': tltFilePath,
-            'Thickness': self.tomoThickness.get(),
+            'Thickness': self.protTomoCtfDefocus.get().tomoThickness.get(),
             'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[1]),
-            'Shift': "0.0," + str(self.tomoShift.get()),
+            'Shift': "0.0," + str(self.protTomoCtfDefocus.get().tomoShift.get()),
             'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
-            'DefocusStep': self.defocusStep.get()
+            'DefocusStep': self.protTomoCtfDefocus.get().defocusStep.get()
         }
 
         args3dctf = "-Algorithm %(Algorithm)s " \
