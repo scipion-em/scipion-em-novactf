@@ -116,27 +116,28 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Correction type to be applied for reconstruction')
 
+        self.defineFilterParameters(form)
+
+        form.addParallelSection(threads=8, mpi=1)
+
+    @staticmethod
+    def defineFilterParameters(form):
         groupRadialFrequencies = form.addGroup('Radial filtering',
                                                help='This entry controls low-pass filtering with the radial weighting '
                                                     'function.  The radial weighting function is linear away from the '
                                                     'origin out to the distance in reciprocal space specified by the '
                                                     'first value, followed by a Gaussian fall-off determined by the '
-                                                    'second value.',
-                                               expertLevel=params.LEVEL_ADVANCED)
-
+                                                    'second value.')
         groupRadialFrequencies.addParam('radialFirstParameter',
                                         params.FloatParam,
                                         default=0.3,
                                         label='First parameter',
                                         help='Linear region value')
-
         groupRadialFrequencies.addParam('radialSecondParameter',
                                         params.FloatParam,
                                         default=0.05,
                                         label='Second parameter',
                                         help='Gaussian fall-off parameter')
-
-        form.addParallelSection(threads=8, mpi=1)
 
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
@@ -267,6 +268,10 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         protTomoReconstruction = ProtNovaCtfTomoReconstruction()
         protTomoReconstruction.protTomoCtfDefocus.set(self)
+        protTomoReconstruction.radialFirstParameter.set(self.radialFirstParameter.get())
+        protTomoReconstruction.radialSecondParameter.set(self.radialSecondParameter.get())
+        protTomoReconstruction.numberOfThreads.set(self.numberOfThreads.get())
+        protTomoReconstruction.numberOfMpi.set(self.numberOfMpi.get())
 
         project.scheduleProtocol(protTomoReconstruction)
 

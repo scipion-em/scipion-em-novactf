@@ -37,6 +37,7 @@ from tomo.protocols import ProtTomoBase
 from tomo.convert import writeTiStack
 from tomo.objects import Tomogram, TiltSeries
 from novactf import Plugin
+from novactf.protocols import ProtNovaCtfTomoDefocus
 from imod import Plugin as imodPlugin
 
 
@@ -65,6 +66,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                       pointerClass='ProtNovaCtfTomoDefocus',
                       help='Select the previous NovaCtf defocus estimation run.')
 
+        ProtNovaCtfTomoDefocus.defineFilterParameters(form)
+
         form.addParallelSection(threads=4, mpi=1)
 
     # -------------------------- INSERT steps functions ---------------------
@@ -72,11 +75,12 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         for index, ts in enumerate(self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()):
             convertInputId = self._insertFunctionStep('convertInputStep',
-                                                      ts.getObjId())
+                                                      ts.getObjId(),
+                                                      prerequisites=[])
 
             allCtfId = []
 
-            for counterCtf in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get() + 1):
+            for counterCtf in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get()):
                 ctfId = self._insertFunctionStep('computeCtfCorrectionStep',
                                                  ts.getObjId(),
                                                  counterCtf,
@@ -85,7 +89,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
             allFlipId = []
 
-            for counterFlip in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get() + 1):
+            for counterFlip in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get()):
                 flipId = self._insertFunctionStep('computeFlipStep',
                                                   ts.getObjId(),
                                                   counterFlip,
@@ -94,7 +98,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
             allFilterId = []
 
-            for counterFilter in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get() + 1):
+            for counterFilter in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get()):
                 filterId = self._insertFunctionStep('computeFilteringStep',
                                                     ts.getObjId(),
                                                     counterFilter,
@@ -270,9 +274,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         return correctionType
 
     def getDefocusFileFormat(self):
-        if self.ctfEstimationType.get()==0:
+        if self.protTomoCtfDefocus.get().ctfEstimationType.get() == 0:
             outputDefocusFileFormat = "imod"
-        if self.ctfEstimationType.get() == 1:
+        if self.protTomoCtfDefocus.get().ctfEstimationType.get() == 1:
             outputDefocusFileFormat = "ctffind4"
 
         return outputDefocusFileFormat
