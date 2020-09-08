@@ -61,12 +61,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     def _defineParams(self, form):
         form.addSection('Input')
 
-        form.addParam('inputSetOfTiltSeries',
-                      params.PointerParam,
-                      pointerClass='SetOfTiltSeries',
-                      important=True,
-                      label='Input set of tilt-Series')
-
         form.addParam('ctfEstimationType',
                       params.EnumParam,
                       choices=['IMOD', 'Other'],
@@ -75,6 +69,12 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                       important=True,
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='CTF estimation origin.')
+
+        form.addParam('inputSetOfTiltSeries',
+                      params.PointerParam,
+                      pointerClass='SetOfTiltSeries',
+                      condition='ctfEstimationType==1',
+                      label='Input set of tilt-Series')
 
         form.addParam('protImodCtfEstimation',
                       params.PointerParam,
@@ -142,7 +142,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
 
-        for ts in self.inputSetOfTiltSeries.get():
+        for ts in self.getInputSetOfTiltSeries():
             self._insertFunctionStep('convertInputStep',
                                      ts.getObjId())
 
@@ -164,7 +164,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        ts = self.getInputSetOfTiltSeries()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(tsId)
         extraPrefix = self._getExtraPath(tsId)
@@ -176,7 +176,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         ts.generateTltFile(angleFilePath)
 
     def generateImodDefocusFileStep(self, tsObjId):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        ts = self.getInputSetOfTiltSeries()[tsObjId]
         tsId = ts.getTsId()
         outputDefocusFile = self.getDefocusFile(ts)
 
@@ -184,7 +184,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         path.copyFile(os.path.join(outputDefocusFilePrefix, "%s.defocus" % tsId), outputDefocusFile)
 
     def generateCtffindDefocusFileStep(self, tsObjId):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        ts = self.getInputSetOfTiltSeries()[tsObjId]
         outputDefocusFile = self.getDefocusFile(ts)
         defocusInfo = []
 
@@ -209,7 +209,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                 f.writelines(line)
 
     def computeDefocusStep(self, tsObjId):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        ts = self.getInputSetOfTiltSeries()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
 
@@ -224,7 +224,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             'DefocusFileFormat': self.getDefocusFileFormat(),
             'CorrectAstigmatism': 1,
             'DefocusFile': self.getDefocusFile(ts),
-            'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
+            'PixelSize': self.getInputSetOfTiltSeries().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
         }
 
@@ -244,7 +244,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         Plugin.runNovactf(self, 'novaCTF', argsDefocus % paramsDefocus)
 
     def getNumberOfIntermediateStacksStep(self, tsObjId):
-        ts = self.inputSetOfTiltSeries.get()[tsObjId]
+        ts = self.getInputSetOfTiltSeries()[tsObjId]
         tsId = ts.getTsId()
 
         extraPrefix = self._getExtraPath(ts.getTsId())
@@ -279,6 +279,14 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
+    def getInputSetOfTiltSeries(self):
+        if self.ctfEstimationType.get() == 0:
+            inputSetOfTiltSeries = self.protImodCtfEstimation.get().inputSetOfTiltSeries.get()
+        elif self.ctfEstimationType.get() == 1:
+            inputSetOfTiltSeries = self.inputSetOfTiltSeries.get()
+
+        return inputSetOfTiltSeries
+
     def getCorrectionType(self):
         if self.correctionType.get() == 0:
             correctionType = "phaseflip"
