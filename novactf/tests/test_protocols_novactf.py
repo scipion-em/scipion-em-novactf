@@ -25,6 +25,7 @@
 # **************************************************************************
 
 from pyworkflow.tests import *
+from pyworkflow.tests.test_utils import wait
 import imod
 from novactf.protocols import *
 from pwem.emlib.image import ImageHandler
@@ -158,25 +159,30 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
                                                       numberSectorsAstigmatism=36,
                                                       maximumAstigmatism=1.2)
 
-        cls.protCTFReconstruction = \
-            cls._runCtfReconstruction(inputSoTS=cls.protCTFEstimation.outputCtfEstimatedSetOfTiltSeries,
-                                      ctfEstimationType=0,
-                                      protImodCtfEstimation=cls.protCTFEstimation,
-                                      tomoThickness=cls.thicknessTomo,
-                                      tomoShift=0,
-                                      defocusStep=15,
-                                      correctionType=0,
-                                      radialFirstParameter=0.3,
-                                      radialSecondParameter=0.05)
+        cls.protCTFReconstruction = cls._runCtfReconstruction(inputSoTS=None,
+                                                              ctfEstimationType=0,
+                                                              protImodCtfEstimation=cls.protCTFEstimation,
+                                                              tomoThickness=cls.thicknessTomo,
+                                                              tomoShift=0,
+                                                              defocusStep=15,
+                                                              correctionType=0,
+                                                              radialFirstParameter=0.3,
+                                                              radialSecondParameter=0.05)
+
+        wait(condition=lambda: not (cls.proj.getRuns() == 4 and cls.proj.getRuns()[3].isFinished()),
+             timeout=400)
 
     def test_tomoReconstructionOutput(self):
-        self.assertIsNotNone(self.protCTFReconstruction.outputSetOfTomograms)
+        protTomoReconstruction = self.proj.getRuns()[3]
+        self.assertIsNotNone(protTomoReconstruction.outputSetOfTomograms)
 
     def test_tomoReconstructionOutputSize(self):
-        self.assertTrue(self.protCTFReconstruction.outputSetOfTomograms.getSize() == 1)
+        protTomoReconstruction = self.proj.getRuns()[3]
+        self.assertTrue(protTomoReconstruction.outputSetOfTomograms.getSize() == 1)
 
     def test_tomoReconstructionOutputTomogramDimensions(self):
         ih = ImageHandler()
+        protTomoReconstruction = self.proj.getRuns()[3]
         self.assertTrue(
-            ih.getDimensions(self.protCTFReconstruction.outputSetOfTomograms.getFirstItem()) ==
+            ih.getDimensions(protTomoReconstruction.outputSetOfTomograms.getFirstItem()) ==
             (960, 928, self.thicknessTomo, 1))
