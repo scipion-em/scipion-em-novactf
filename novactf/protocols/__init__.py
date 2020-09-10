@@ -24,4 +24,5 @@
 # *
 # **************************************************************************
 
-from .protocol_tomoReconstruction import ProtTomoCtfReconstruction
+from .protocol_tomoDefocus import ProtNovaCtfTomoDefocus
+from .protocol_tomoReconstruction import ProtNovaCtfTomoReconstruction
