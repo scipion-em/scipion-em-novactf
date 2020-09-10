@@ -43,7 +43,7 @@ from novactf import Plugin
 
 class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     """
-    Tomogram reconstruction and ctf correction procedure based on the novaCTF procedure.
+    Defocus estimation of each tilt-image procedure based on the novaCTF procedure.
 
     More info:
             https://github.com/turonova/novaCTF

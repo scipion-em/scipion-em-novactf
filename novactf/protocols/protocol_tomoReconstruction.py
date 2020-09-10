@@ -42,7 +42,7 @@ from imod import Plugin as imodPlugin
 
 class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     """
-    Tomogram reconstruction and ctf correction procedure based on the novaCTF procedure.
+    Tomogram reconstruction with ctf correction procedure based on the novaCTF procedure.
 
     More info:
             https://github.com/turonova/novaCTF
