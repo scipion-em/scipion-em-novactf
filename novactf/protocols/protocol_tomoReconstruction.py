@@ -26,7 +26,6 @@
 
 import os
 import numpy as np
-import math
 import pyworkflow as pw
 import pyworkflow.protocol.params as params
 import pyworkflow.utils.path as path
