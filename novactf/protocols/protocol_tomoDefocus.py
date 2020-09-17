@@ -116,6 +116,15 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Correction type to be applied for reconstruction')
 
+        form.addParam('correctAstigmatism',
+                      params.EnumParam,
+                      choices=['Yes', 'No'],
+                      default=0,
+                      label='Correct astigmatism',
+                      important=True,
+                      display=params.EnumParam.DISPLAY_HLIST,
+                      help='Correct for astigmatism in reconstruction')
+
         self.defineFilterParameters(form)
 
         form.addParallelSection(threads=8, mpi=1)
@@ -222,7 +231,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             'Shift': "0.0," + str(self.tomoShift.get()),
             'CorrectionType': self.getCorrectionType(),
             'DefocusFileFormat': self.getDefocusFileFormat(),
-            'CorrectAstigmatism': 1,
+            'CorrectAstigmatism': self.correctAstigmatism.get(),
             'DefocusFile': self.getDefocusFile(ts),
             'PixelSize': self.getInputSetOfTiltSeries().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
