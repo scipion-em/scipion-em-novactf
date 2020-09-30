@@ -24,5 +24,9 @@
 # *
 # **************************************************************************
 
-from .protocol_tomoDefocus import ProtNovaCtfTomoDefocus
-from .protocol_tomoReconstruction import ProtNovaCtfTomoReconstruction
+from pyworkflow.tests import DataSet
+
+DataSet(name='tomo-em',
+        folder='tomo-em',
+        files={
+            'tsCtf': 'novaCtfTestData/tomo1_bin4.mrc'})
