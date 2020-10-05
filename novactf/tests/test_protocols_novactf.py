@@ -115,7 +115,7 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
     def setUpClass(cls):
         setupTestProject(cls)
 
-        cls.inputDataSet = DataSet.getDataSet('tomo-em')
+        cls.inputDataSet = DataSet.getDataSet('novaCtfTestData')
         cls.inputSoTS = cls.inputDataSet.getFile('tsCtf')
 
         cls.thicknessTomo = 20.0
