@@ -170,7 +170,7 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
                                                               radialSecondParameter=0.05)
 
         wait(condition=lambda: not (cls.proj.getRuns() == 4 and cls.proj.getRuns()[3].isFinished()),
-             timeout=400)
+             timeout=600)
 
     def test_tomoReconstructionOutput(self):
         protTomoReconstruction = self.proj.getRuns()[3]
