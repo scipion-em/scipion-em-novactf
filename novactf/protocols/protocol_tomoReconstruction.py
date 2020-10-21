@@ -281,7 +281,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         return outputDefocusFileFormat
 
     def getOutputSetOfTomograms(self):
-        if not hasattr(self, "outputSetOfTomograms"):
+        if hasattr(self, "outputSetOfTomograms"):
+            self.outputCtfEstimatedSetOfTiltSeries.enableAppend()
+        else:
             outputSetOfTomograms = self._createSetOfTomograms()
             outputSetOfTomograms.copyInfo(self.protTomoCtfDefocus.get().getInputSetOfTiltSeries())
             self._defineOutputs(outputSetOfTomograms=outputSetOfTomograms)
