@@ -25,6 +25,7 @@
 # **************************************************************************
 
 import os
+import pyworkflow as pw
 import pyworkflow.protocol.params as params
 import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
@@ -282,6 +283,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         else:
             outputSetOfTomograms = self._createSetOfTomograms()
             outputSetOfTomograms.copyInfo(self.protTomoCtfDefocus.get().getInputSetOfTiltSeries())
+            outputSetOfTomograms.setStreamState(pw.objects.Set.STREAM_OPEN)
             self._defineOutputs(outputSetOfTomograms=outputSetOfTomograms)
             self._defineSourceRelation(self.protTomoCtfDefocus.get().getInputSetOfTiltSeries(), outputSetOfTomograms)
 
