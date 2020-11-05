@@ -282,7 +282,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     def getOutputSetOfTomograms(self):
         if hasattr(self, "outputSetOfTomograms"):
-            self.outputCtfEstimatedSetOfTiltSeries.enableAppend()
+            self.outputSetOfTomograms.enableAppend()
         else:
             outputSetOfTomograms = self._createSetOfTomograms()
             outputSetOfTomograms.copyInfo(self.protTomoCtfDefocus.get().getInputSetOfTiltSeries())
