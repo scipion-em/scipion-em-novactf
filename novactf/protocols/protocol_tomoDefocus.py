@@ -25,19 +25,13 @@
 # **************************************************************************
 
 import os
-import numpy as np
-import math
-import pyworkflow as pw
 import pyworkflow.protocol.params as params
 from pyworkflow.project import Manager
 import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pyworkflow.object import Integer, List
 from pwem.protocols import EMProtocol
-from pwem.emlib.image import ImageHandler
 from tomo.protocols import ProtTomoBase
-from tomo.convert import writeTiStack
-from tomo.objects import Tomogram, TiltSeries
 from novactf import Plugin
 
 
