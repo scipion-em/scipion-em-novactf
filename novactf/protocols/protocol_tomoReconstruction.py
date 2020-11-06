@@ -283,7 +283,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         else:
             outputSetOfTomograms = self._createSetOfTomograms()
             outputSetOfTomograms.copyInfo(self.protTomoCtfDefocus.get().getInputSetOfTiltSeries())
-            outputSetOfTomograms.setStreamState(pw.objects.Set.STREAM_OPEN)
+            outputSetOfTomograms.setStreamState(pw.object.Set.STREAM_OPEN)
             self._defineOutputs(outputSetOfTomograms=outputSetOfTomograms)
             self._defineSourceRelation(self.protTomoCtfDefocus.get().getInputSetOfTiltSeries(), outputSetOfTomograms)
 
