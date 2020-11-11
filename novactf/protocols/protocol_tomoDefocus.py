@@ -305,7 +305,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         return outputDefocusFile
 
     def getDefocusFileFormat(self):
-        if self.ctfEstimationType.get()==0:
+        if self.ctfEstimationType.get() == 0:
             outputDefocusFileFormat = "imod"
         if self.ctfEstimationType.get() == 1:
             outputDefocusFileFormat = "ctffind4"
