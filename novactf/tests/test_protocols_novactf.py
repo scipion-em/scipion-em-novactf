@@ -115,7 +115,7 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
     def setUpClass(cls):
         setupTestProject(cls)
 
-        cls.inputDataSet = DataSet.getDataSet('tomo-em')
+        cls.inputDataSet = DataSet.getDataSet('novaCtfTestData')
         cls.inputSoTS = cls.inputDataSet.getFile('tsCtf')
 
         cls.thicknessTomo = 20.0
@@ -170,7 +170,7 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
                                                               radialSecondParameter=0.05)
 
         wait(condition=lambda: not (cls.proj.getRuns() == 4 and cls.proj.getRuns()[3].isFinished()),
-             timeout=400)
+             timeout=600)
 
     def test_tomoReconstructionOutput(self):
         protTomoReconstruction = self.proj.getRuns()[3]

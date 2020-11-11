@@ -26,7 +26,7 @@
 
 from pyworkflow.tests import DataSet
 
-DataSet(name='tomo-em',
-        folder='tomo-em',
+DataSet(name='novaCtfTestData',
+        folder='novaCtfTestData',
         files={
-            'tsCtf': 'novaCtfTestData/tomo1_bin4.mrc'})
+            'tsCtf': 'tomo1_bin4.mrc'})

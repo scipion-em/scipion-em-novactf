@@ -25,19 +25,13 @@
 # **************************************************************************
 
 import os
-import numpy as np
-import math
-import pyworkflow as pw
 import pyworkflow.protocol.params as params
 from pyworkflow.project import Manager
 import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pyworkflow.object import Integer, List
 from pwem.protocols import EMProtocol
-from pwem.emlib.image import ImageHandler
 from tomo.protocols import ProtTomoBase
-from tomo.convert import writeTiStack
-from tomo.objects import Tomogram, TiltSeries
 from novactf import Plugin
 
 
@@ -311,7 +305,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         return outputDefocusFile
 
     def getDefocusFileFormat(self):
-        if self.ctfEstimationType.get()==0:
+        if self.ctfEstimationType.get() == 0:
             outputDefocusFileFormat = "imod"
         if self.ctfEstimationType.get() == 1:
             outputDefocusFileFormat = "ctffind4"
@@ -333,7 +327,8 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         summary = []
 
         counter = 0
-        for ts in self.inputSetOfTiltSeries.get():
+
+        for ts in self.getInputSetOfTiltSeries():
             tsId = ts.getTsId()
             if os.path.exists(os.path.join(self._getExtraPath(tsId), tsId + ".defocus_0")):
                 counter += 1
@@ -342,7 +337,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             summary.append("Input Tilt-Series: %d.\n"
                            "Tilt-series defocus processed: %d.\n"
                            "Defocus files generated for each tilt-series: %d.\n"
-                           % (self.inputSetOfTiltSeries.get().getSize(),
+                           % (self.getInputSetOfTiltSeries().getSize(),
                               counter,
                               self.numberOfIntermediateStacks[0]))
         else:
@@ -353,13 +348,15 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         methods = []
 
         counter = 0
-        for ts in self.inputSetOfTiltSeries.get():
+
+        for ts in self.getInputSetOfTiltSeries():
             tsId = ts.getTsId()
             if os.path.exists(os.path.join(self._getExtraPath(tsId), tsId + ".defocus_0")):
                 counter += 1
 
         if counter != 0:
-            methods.append("%d defocus files have been generated for each of the %d tilt-series.\n"
+            methods.append("%d defocus files have been generated for each of the %d tilt-series using the defocus "
+                           "algorithm from novaCTF.\n"
                            % (self.numberOfIntermediateStacks[0],
                               counter))
         else:
