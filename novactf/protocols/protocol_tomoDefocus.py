@@ -33,6 +33,7 @@ from pyworkflow.object import Integer, List
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
 from novactf import Plugin
+from imod import utils as imodUtils
 
 
 class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
@@ -174,15 +175,22 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
         ts = self.getInputSetOfTiltSeries()[tsObjId]
+        ctfTomoSeries = self.inputSetOfCtfTomoSeries.get()[tsObjId]
+
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(tsId)
         extraPrefix = self._getExtraPath(tsId)
+
         path.makePath(tmpPrefix)
         path.makePath(extraPrefix)
 
         """Generate angle file"""
         angleFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
         ts.generateTltFile(angleFilePath)
+
+        """Generate defocus file"""
+        defocusFilePath = os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".defocus"))
+        imodUtils.generateDefocusIMODFileFromObject(ctfTomoSeries, defocusFilePath)
 
     # def generateImodDefocusFileStep(self, tsObjId):
     #     ts = self.getInputSetOfTiltSeries()[tsObjId]
