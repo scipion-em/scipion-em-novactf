@@ -56,15 +56,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     def _defineParams(self, form):
         form.addSection('Input')
 
-        # form.addParam('ctfEstimationType',
-        #               params.EnumParam,
-        #               choices=['IMOD', 'Other'],
-        #               default=1,
-        #               label='CTF estimation',
-        #               important=True,
-        #               display=params.EnumParam.DISPLAY_HLIST,
-        #               help='CTF estimation origin.')
-
         form.addParam('inputSetOfTiltSeries',
                       params.PointerParam,
                       pointerClass='SetOfTiltSeries',
@@ -75,13 +66,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                       label="input tilt-series CTF estimation",
                       pointerClass='SetOfCTFTomoSeries',
                       help='Select the CTF estimation from the set of tilt-series.')
-
-        # form.addParam('protImodCtfEstimation',
-        #               params.PointerParam,
-        #               label="IMOD CTF estimation run",
-        #               condition='ctfEstimationType==0',
-        #               pointerClass='ProtImodCtfEstimation',
-        #               help='Select the previous IMOD CTF estimation run.')
 
         form.addParam('tomoThickness',
                       params.FloatParam,
@@ -155,14 +139,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             self._insertFunctionStep('convertInputStep',
                                      ts.getObjId())
 
-            # if self.ctfEstimationType.get() == 0:
-            #     self._insertFunctionStep('generateImodDefocusFileStep',
-            #                              ts.getObjId())
-            #
-            # elif self.ctfEstimationType.get() == 1:
-            #     self._insertFunctionStep('generateCtffindDefocusFileStep',
-            #                              ts.getObjId())
-
             self._insertFunctionStep('computeDefocusStep',
                                      ts.getObjId())
 
@@ -190,39 +166,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         """Generate defocus file"""
         defocusFilePath = os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".defocus"))
         imodUtils.generateDefocusIMODFileFromObject(ctfTomoSeries, defocusFilePath)
-
-    # def generateImodDefocusFileStep(self, tsObjId):
-    #     ts = self.getInputSetOfTiltSeries()[tsObjId]
-    #     tsId = ts.getTsId()
-    #     outputDefocusFile = self.getDefocusFile(ts)
-    #
-    #     outputDefocusFilePrefix = self.protImodCtfEstimation.get()._getExtraPath(tsId)
-    #     path.copyFile(os.path.join(outputDefocusFilePrefix, "%s.defocus" % tsId), outputDefocusFile)
-    #
-    # def generateCtffindDefocusFileStep(self, tsObjId):
-    #     ts = self.getInputSetOfTiltSeries()[tsObjId]
-    #     outputDefocusFile = self.getDefocusFile(ts)
-    #     defocusInfo = []
-    #
-    #     for ti in ts:
-    #         ctfModel = ti.getCTF()
-    #         defU, defV, defAngle = ctfModel.getDefocus()
-    #         azimutAng = defAngle - 180  # Conversion to CTFFind angle
-    #         phaseFlip = 0 if ctfModel.getPhaseShift() is None else ctfModel.getPhaseShift()
-    #         fitQuality = ctfModel.getFitQuality()  # CTFFind cross correlation
-    #         resolution = ctfModel.getResolution()  # CTFFind spacing up to which CTF rings were fit successfully
-    #         tiDefocusInfoVector = [defU, defV, azimutAng, phaseFlip, fitQuality, resolution]
-    #         defocusInfo.append(tiDefocusInfoVector)
-    #
-    #     with open(outputDefocusFile, 'w') as f:
-    #         f.writelines("# Columns: #1 - micrograph number; #2 - defocus 1 [Angstroms]; #3 - defocus 2; "
-    #                      "#4 - azimuth of astigmatism; #5 - additional phase shift [radians]; #6 - cross correlation; "
-    #                      "#7 - spacing (in Angstroms) up to which CTF rings were fit successfully\n")
-    #
-    #         for counter, vector in enumerate(defocusInfo):
-    #             line = "%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n" % \
-    #                    (counter + 1, vector[0], vector[1], vector[2], vector[3], vector[4], vector[5])
-    #             f.writelines(line)
 
     def computeDefocusStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
@@ -299,14 +242,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
-    # def getInputSetOfTiltSeries(self):
-    #     if self.ctfEstimationType.get() == 0:
-    #         inputSetOfTiltSeries = self.protImodCtfEstimation.get().inputSetOfTiltSeries.get()
-    #     elif self.ctfEstimationType.get() == 1:
-    #         inputSetOfTiltSeries = self.inputSetOfTiltSeries.get()
-    #
-    #     return inputSetOfTiltSeries
-
     def getCorrectionType(self):
         if self.correctionType.get() == 0:
             correctionType = "phaseflip"
@@ -314,20 +249,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             correctionType = "multiplication"
 
         return correctionType
-
-    # def getDefocusFile(self, ts):
-    #     tsId = ts.getTsId()
-    #     outputDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
-    #
-    #     return outputDefocusFile
-    #
-    # def getDefocusFileFormat(self):
-    #     if self.ctfEstimationType.get() == 0:
-    #         outputDefocusFileFormat = "imod"
-    #     if self.ctfEstimationType.get() == 1:
-    #         outputDefocusFileFormat = "ctffind4"
-    #
-    #     return outputDefocusFileFormat
 
     # --------------------------- INFO functions ----------------------------
     def _validate(self):
