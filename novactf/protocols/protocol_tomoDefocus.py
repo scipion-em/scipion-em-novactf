@@ -68,7 +68,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         form.addParam('inputSetOfTiltSeries',
                       params.PointerParam,
                       pointerClass='SetOfTiltSeries',
-                      condition='ctfEstimationType==1',
                       label='Input set of tilt-Series')
 
         form.addParam('inputSetOfCtfTomoSeries',
