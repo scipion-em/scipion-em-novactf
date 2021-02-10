@@ -142,7 +142,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             'DefocusFile': defocusFilePath + str(counter),
             'TiltFile': tltFilePath,
             'CorrectionType': self.getCorrectionType(),
-            'DefocusFileFormat': self.getDefocusFileFormat(),
+            'DefocusFileFormat': "imod",
             'CorrectAstigmatism': self.protTomoCtfDefocus.get().correctAstigmatism.get(),
             'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'AmplitudeContrast':
