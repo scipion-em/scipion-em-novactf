@@ -269,13 +269,13 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         return correctionType
 
-    def getDefocusFileFormat(self):
-        if self.protTomoCtfDefocus.get().ctfEstimationType.get() == 0:
-            outputDefocusFileFormat = "imod"
-        if self.protTomoCtfDefocus.get().ctfEstimationType.get() == 1:
-            outputDefocusFileFormat = "ctffind4"
-
-        return outputDefocusFileFormat
+    # def getDefocusFileFormat(self):
+    #     if self.protTomoCtfDefocus.get().ctfEstimationType.get() == 0:
+    #         outputDefocusFileFormat = "imod"
+    #     if self.protTomoCtfDefocus.get().ctfEstimationType.get() == 1:
+    #         outputDefocusFileFormat = "ctffind4"
+    #
+    #     return outputDefocusFileFormat
 
     def getOutputSetOfTomograms(self):
         if hasattr(self, "outputSetOfTomograms"):
