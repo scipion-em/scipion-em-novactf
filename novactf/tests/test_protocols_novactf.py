@@ -94,18 +94,16 @@ class TestNovaCtfBase(BaseTest):
         return cls.protCTFEstimation
 
     @classmethod
-    def _runCtfReconstruction(cls, inputSoTS, ctfEstimationType, protImodCtfEstimation, tomoThickness, tomoShift,
-                              defocusStep, correctionType, radialFirstParameter, radialSecondParameter):
+    def _runCtfReconstructionDefocus(cls, inputSetOfTiltSeries, inputSetOfCtfTomoSeries, tomoThickness, tomoShift,
+                                     defocusStep, correctionType, correctAstigmatism):
         cls.protCTFReconstruction = cls.newProtocol(ProtNovaCtfTomoDefocus,
-                                                    inputSetOfTiltSeries=inputSoTS,
-                                                    ctfEstimationType=ctfEstimationType,
-                                                    protImodCtfEstimation=protImodCtfEstimation,
+                                                    inputSetOfTiltSeries=inputSetOfTiltSeries,
+                                                    inputSetOfCtfTomoSeries=inputSetOfCtfTomoSeries,
                                                     tomoThickness=tomoThickness,
                                                     tomoShift=tomoShift,
                                                     defocusStep=defocusStep,
                                                     correctionType=correctionType,
-                                                    radialFirstParameter=radialFirstParameter,
-                                                    radialSecondParameter=radialSecondParameter)
+                                                    correctAstigmatism=correctAstigmatism,)
         cls.launchProtocol(cls.protCTFReconstruction)
         return cls.protCTFReconstruction
 
