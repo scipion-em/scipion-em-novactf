@@ -151,7 +151,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
 
-        for ts in self.inputSetOfTiltSeries():
+        for ts in self.inputSetOfTiltSeries.get():
             self._insertFunctionStep('convertInputStep',
                                      ts.getObjId())
 
@@ -173,7 +173,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
-        ts = self.inputSetOfTiltSeries()[tsObjId]
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
         ctfTomoSeries = self.inputSetOfCtfTomoSeries.get()[tsObjId]
 
         tsId = ts.getTsId()
@@ -225,7 +225,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     #             f.writelines(line)
 
     def computeDefocusStep(self, tsObjId):
-        ts = self.inputSetOfTiltSeries()[tsObjId]
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
 
         tmpPrefix = self._getTmpPath(ts.getTsId())
@@ -244,7 +244,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             'DefocusFileFormat': "imod",
             'CorrectAstigmatism': self.correctAstigmatism.get(),
             'DefocusFile': defocusFilePath,
-            'PixelSize': self.inputSetOfTiltSeries().getSamplingRate() / 10,
+            'PixelSize': self.inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
         }
 
@@ -264,7 +264,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         Plugin.runNovactf(self, 'novaCTF', argsDefocus % paramsDefocus)
 
     def getNumberOfIntermediateStacksStep(self, tsObjId):
-        ts = self.inputSetOfTiltSeries()[tsObjId]
+        ts = self.inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
 
         extraPrefix = self._getExtraPath(ts.getTsId())
@@ -344,7 +344,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         counter = 0
 
-        for ts in self.inputSetOfTiltSeries():
+        for ts in self.inputSetOfTiltSeries.get():
             tsId = ts.getTsId()
             if os.path.exists(os.path.join(self._getExtraPath(tsId), tsId + ".defocus_0")):
                 counter += 1
@@ -353,7 +353,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             summary.append("Input Tilt-Series: %d.\n"
                            "Tilt-series defocus processed: %d.\n"
                            "Defocus files generated for each tilt-series: %d.\n"
-                           % (self.inputSetOfTiltSeries().getSize(),
+                           % (self.inputSetOfTiltSeries.get().getSize(),
                               counter,
                               self.numberOfIntermediateStacks[0]))
         else:
@@ -365,7 +365,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         counter = 0
 
-        for ts in self.inputSetOfTiltSeries():
+        for ts in self.inputSetOfTiltSeries.get():
             tsId = ts.getTsId()
             if os.path.exists(os.path.join(self._getExtraPath(tsId), tsId + ".defocus_0")):
                 counter += 1
