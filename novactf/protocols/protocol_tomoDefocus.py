@@ -300,13 +300,13 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
-    def getInputSetOfTiltSeries(self):
-        if self.ctfEstimationType.get() == 0:
-            inputSetOfTiltSeries = self.protImodCtfEstimation.get().inputSetOfTiltSeries.get()
-        elif self.ctfEstimationType.get() == 1:
-            inputSetOfTiltSeries = self.inputSetOfTiltSeries.get()
-
-        return inputSetOfTiltSeries
+    # def getInputSetOfTiltSeries(self):
+    #     if self.ctfEstimationType.get() == 0:
+    #         inputSetOfTiltSeries = self.protImodCtfEstimation.get().inputSetOfTiltSeries.get()
+    #     elif self.ctfEstimationType.get() == 1:
+    #         inputSetOfTiltSeries = self.inputSetOfTiltSeries.get()
+    #
+    #     return inputSetOfTiltSeries
 
     def getCorrectionType(self):
         if self.correctionType.get() == 0:
@@ -316,19 +316,19 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         return correctionType
 
-    def getDefocusFile(self, ts):
-        tsId = ts.getTsId()
-        outputDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
-
-        return outputDefocusFile
-
-    def getDefocusFileFormat(self):
-        if self.ctfEstimationType.get() == 0:
-            outputDefocusFileFormat = "imod"
-        if self.ctfEstimationType.get() == 1:
-            outputDefocusFileFormat = "ctffind4"
-
-        return outputDefocusFileFormat
+    # def getDefocusFile(self, ts):
+    #     tsId = ts.getTsId()
+    #     outputDefocusFile = os.path.join(self._getExtraPath(tsId), tsId + ".defocus")
+    #
+    #     return outputDefocusFile
+    #
+    # def getDefocusFileFormat(self):
+    #     if self.ctfEstimationType.get() == 0:
+    #         outputDefocusFileFormat = "imod"
+    #     if self.ctfEstimationType.get() == 1:
+    #         outputDefocusFileFormat = "ctffind4"
+    #
+    #     return outputDefocusFileFormat
 
     # --------------------------- INFO functions ----------------------------
     def _validate(self):
