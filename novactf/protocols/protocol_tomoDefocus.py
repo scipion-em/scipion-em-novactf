@@ -228,7 +228,11 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     def computeDefocusStep(self, tsObjId):
         ts = self.getInputSetOfTiltSeries()[tsObjId]
         tsId = ts.getTsId()
+
         tmpPrefix = self._getTmpPath(ts.getTsId())
+        extraPrefix = self._getExtraPath(tsId)
+
+        defocusFilePath = os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".defocus"))
 
         paramsDefocus = {
             'Algorithm': "defocus",
@@ -238,9 +242,9 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             'TiltFile': os.path.join(tmpPrefix, "%s.tlt" % tsId),
             'Shift': "0.0," + str(self.tomoShift.get()),
             'CorrectionType': self.getCorrectionType(),
-            'DefocusFileFormat': self.getDefocusFileFormat(),
+            'DefocusFileFormat': "imod",
             'CorrectAstigmatism': self.correctAstigmatism.get(),
-            'DefocusFile': self.getDefocusFile(ts),
+            'DefocusFile': defocusFilePath,
             'PixelSize': self.getInputSetOfTiltSeries().getSamplingRate() / 10,
             'DefocusStep': self.defocusStep.get()
         }
