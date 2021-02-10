@@ -55,14 +55,14 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     def _defineParams(self, form):
         form.addSection('Input')
 
-        form.addParam('ctfEstimationType',
-                      params.EnumParam,
-                      choices=['IMOD', 'Other'],
-                      default=1,
-                      label='CTF estimation',
-                      important=True,
-                      display=params.EnumParam.DISPLAY_HLIST,
-                      help='CTF estimation origin.')
+        # form.addParam('ctfEstimationType',
+        #               params.EnumParam,
+        #               choices=['IMOD', 'Other'],
+        #               default=1,
+        #               label='CTF estimation',
+        #               important=True,
+        #               display=params.EnumParam.DISPLAY_HLIST,
+        #               help='CTF estimation origin.')
 
         form.addParam('inputSetOfTiltSeries',
                       params.PointerParam,
@@ -70,12 +70,18 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                       condition='ctfEstimationType==1',
                       label='Input set of tilt-Series')
 
-        form.addParam('protImodCtfEstimation',
+        form.addParam('inputSetOfCtfTomoSeries',
                       params.PointerParam,
-                      label="IMOD CTF estimation run",
-                      condition='ctfEstimationType==0',
-                      pointerClass='ProtImodCtfEstimation',
-                      help='Select the previous IMOD CTF estimation run.')
+                      label="input tilt-series CTF estimation",
+                      pointerClass='SetOfCTFTomoSeries',
+                      help='Select the CTF estimation from the set of tilt-series.')
+
+        # form.addParam('protImodCtfEstimation',
+        #               params.PointerParam,
+        #               label="IMOD CTF estimation run",
+        #               condition='ctfEstimationType==0',
+        #               pointerClass='ProtImodCtfEstimation',
+        #               help='Select the previous IMOD CTF estimation run.')
 
         form.addParam('tomoThickness',
                       params.FloatParam,
