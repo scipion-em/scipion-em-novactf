@@ -155,13 +155,13 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             self._insertFunctionStep('convertInputStep',
                                      ts.getObjId())
 
-            if self.ctfEstimationType.get() == 0:
-                self._insertFunctionStep('generateImodDefocusFileStep',
-                                         ts.getObjId())
-
-            elif self.ctfEstimationType.get() == 1:
-                self._insertFunctionStep('generateCtffindDefocusFileStep',
-                                         ts.getObjId())
+            # if self.ctfEstimationType.get() == 0:
+            #     self._insertFunctionStep('generateImodDefocusFileStep',
+            #                              ts.getObjId())
+            #
+            # elif self.ctfEstimationType.get() == 1:
+            #     self._insertFunctionStep('generateCtffindDefocusFileStep',
+            #                              ts.getObjId())
 
             self._insertFunctionStep('computeDefocusStep',
                                      ts.getObjId())
@@ -184,38 +184,38 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         angleFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
         ts.generateTltFile(angleFilePath)
 
-    def generateImodDefocusFileStep(self, tsObjId):
-        ts = self.getInputSetOfTiltSeries()[tsObjId]
-        tsId = ts.getTsId()
-        outputDefocusFile = self.getDefocusFile(ts)
-
-        outputDefocusFilePrefix = self.protImodCtfEstimation.get()._getExtraPath(tsId)
-        path.copyFile(os.path.join(outputDefocusFilePrefix, "%s.defocus" % tsId), outputDefocusFile)
-
-    def generateCtffindDefocusFileStep(self, tsObjId):
-        ts = self.getInputSetOfTiltSeries()[tsObjId]
-        outputDefocusFile = self.getDefocusFile(ts)
-        defocusInfo = []
-
-        for ti in ts:
-            ctfModel = ti.getCTF()
-            defU, defV, defAngle = ctfModel.getDefocus()
-            azimutAng = defAngle - 180  # Conversion to CTFFind angle
-            phaseFlip = 0 if ctfModel.getPhaseShift() is None else ctfModel.getPhaseShift()
-            fitQuality = ctfModel.getFitQuality()  # CTFFind cross correlation
-            resolution = ctfModel.getResolution()  # CTFFind spacing up to which CTF rings were fit successfully
-            tiDefocusInfoVector = [defU, defV, azimutAng, phaseFlip, fitQuality, resolution]
-            defocusInfo.append(tiDefocusInfoVector)
-
-        with open(outputDefocusFile, 'w') as f:
-            f.writelines("# Columns: #1 - micrograph number; #2 - defocus 1 [Angstroms]; #3 - defocus 2; "
-                         "#4 - azimuth of astigmatism; #5 - additional phase shift [radians]; #6 - cross correlation; "
-                         "#7 - spacing (in Angstroms) up to which CTF rings were fit successfully\n")
-
-            for counter, vector in enumerate(defocusInfo):
-                line = "%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n" % \
-                       (counter + 1, vector[0], vector[1], vector[2], vector[3], vector[4], vector[5])
-                f.writelines(line)
+    # def generateImodDefocusFileStep(self, tsObjId):
+    #     ts = self.getInputSetOfTiltSeries()[tsObjId]
+    #     tsId = ts.getTsId()
+    #     outputDefocusFile = self.getDefocusFile(ts)
+    #
+    #     outputDefocusFilePrefix = self.protImodCtfEstimation.get()._getExtraPath(tsId)
+    #     path.copyFile(os.path.join(outputDefocusFilePrefix, "%s.defocus" % tsId), outputDefocusFile)
+    #
+    # def generateCtffindDefocusFileStep(self, tsObjId):
+    #     ts = self.getInputSetOfTiltSeries()[tsObjId]
+    #     outputDefocusFile = self.getDefocusFile(ts)
+    #     defocusInfo = []
+    #
+    #     for ti in ts:
+    #         ctfModel = ti.getCTF()
+    #         defU, defV, defAngle = ctfModel.getDefocus()
+    #         azimutAng = defAngle - 180  # Conversion to CTFFind angle
+    #         phaseFlip = 0 if ctfModel.getPhaseShift() is None else ctfModel.getPhaseShift()
+    #         fitQuality = ctfModel.getFitQuality()  # CTFFind cross correlation
+    #         resolution = ctfModel.getResolution()  # CTFFind spacing up to which CTF rings were fit successfully
+    #         tiDefocusInfoVector = [defU, defV, azimutAng, phaseFlip, fitQuality, resolution]
+    #         defocusInfo.append(tiDefocusInfoVector)
+    #
+    #     with open(outputDefocusFile, 'w') as f:
+    #         f.writelines("# Columns: #1 - micrograph number; #2 - defocus 1 [Angstroms]; #3 - defocus 2; "
+    #                      "#4 - azimuth of astigmatism; #5 - additional phase shift [radians]; #6 - cross correlation; "
+    #                      "#7 - spacing (in Angstroms) up to which CTF rings were fit successfully\n")
+    #
+    #         for counter, vector in enumerate(defocusInfo):
+    #             line = "%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n" % \
+    #                    (counter + 1, vector[0], vector[1], vector[2], vector[3], vector[4], vector[5])
+    #             f.writelines(line)
 
     def computeDefocusStep(self, tsObjId):
         ts = self.getInputSetOfTiltSeries()[tsObjId]
