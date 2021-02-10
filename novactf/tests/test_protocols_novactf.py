@@ -41,6 +41,7 @@ class TestNovaCtfBase(BaseTest):
     def _runImportTiltSeries(cls, filesPath, pattern, voltage, magnification, sphericalAberration, amplitudeContrast,
                              samplingRate, doseInitial, dosePerFrame, anglesFrom=0, minAngle=0.0, maxAngle=0.0,
                              stepAngle=1.0):
+
         cls.protImportTS = cls.newProtocol(tomo.protocols.ProtImportTs,
                                            filesPath=filesPath,
                                            filesPattern=pattern,
@@ -55,7 +56,9 @@ class TestNovaCtfBase(BaseTest):
                                            minAngle=minAngle,
                                            maxAngle=maxAngle,
                                            stepAngle=stepAngle)
+
         cls.launchProtocol(cls.protImportTS)
+
         return cls.protImportTS
 
     @classmethod
@@ -65,6 +68,7 @@ class TestNovaCtfBase(BaseTest):
                           findAstigPhaseCutonToggle, phaseShiftAstigmatism, cutOnFrequencyAstigmatism,
                           minimumViewsAstigmatism, minimumViewsPhaseShift, numberSectorsAstigmatism,
                           maximumAstigmatism):
+
         cls.protCTFEstimation = cls.newProtocol(imod.protocols.ProtImodCtfEstimation,
                                                 inputSetOfTiltSeries=inputSoTS,
                                                 defocusTol=defocusTol,
@@ -90,8 +94,30 @@ class TestNovaCtfBase(BaseTest):
                                                 minimumViewsPhaseShift=minimumViewsPhaseShift,
                                                 numberSectorsAstigmatism=numberSectorsAstigmatism,
                                                 maximumAstigmatism=maximumAstigmatism)
+
         cls.launchProtocol(cls.protCTFEstimation)
+
         return cls.protCTFEstimation
+
+    @classmethod
+    def _runCtfReconstructionDefocus(cls, inputSetOfTiltSeries, inputSetOfCtfTomoSeries, tomoThickness, tomoShift,
+                                     defocusStep, correctionType, correctAstigmatism, radialFirstParameter,
+                                     radialSecondParameter):
+
+        cls.protCTFReconstruction = cls.newProtocol(ProtNovaCtfTomoDefocus,
+                                                    inputSetOfTiltSeries=inputSetOfTiltSeries,
+                                                    inputSetOfCtfTomoSeries=inputSetOfCtfTomoSeries,
+                                                    tomoThickness=tomoThickness,
+                                                    tomoShift=tomoShift,
+                                                    defocusStep=defocusStep,
+                                                    correctionType=correctionType,
+                                                    correctAstigmatism=correctAstigmatism,
+                                                    radialFirstParameter=radialFirstParameter,
+                                                    radialSecondParameter=radialSecondParameter)
+
+        cls.launchProtocol(cls.protCTFReconstruction)
+
+        return cls.protCTFReconstruction
 
     @classmethod
     def _runCtfReconstructionDefocus(cls, inputSetOfTiltSeries, inputSetOfCtfTomoSeries, tomoThickness, tomoShift,
