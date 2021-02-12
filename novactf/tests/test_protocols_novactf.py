@@ -1,6 +1,6 @@
 # **************************************************************************
 # *
-# * Authors:     Federico P. de Isidro Gomez (fp.deisidro@cnb.csi.es) [1]
+# * Authors:     Federico P. de Isidro Gomez (fp.deisidro@cnb.csic.es) [1]
 # *
 # * [1] Centro Nacional de Biotecnologia, CSIC, Spain
 # *
@@ -55,7 +55,9 @@ class TestNovaCtfBase(BaseTest):
                                            minAngle=minAngle,
                                            maxAngle=maxAngle,
                                            stepAngle=stepAngle)
+
         cls.launchProtocol(cls.protImportTS)
+
         return cls.protImportTS
 
     @classmethod
@@ -90,23 +92,28 @@ class TestNovaCtfBase(BaseTest):
                                                 minimumViewsPhaseShift=minimumViewsPhaseShift,
                                                 numberSectorsAstigmatism=numberSectorsAstigmatism,
                                                 maximumAstigmatism=maximumAstigmatism)
+
         cls.launchProtocol(cls.protCTFEstimation)
+
         return cls.protCTFEstimation
 
     @classmethod
-    def _runCtfReconstruction(cls, inputSoTS, ctfEstimationType, protImodCtfEstimation, tomoThickness, tomoShift,
-                              defocusStep, correctionType, radialFirstParameter, radialSecondParameter):
+    def _runCtfReconstruction(cls, inputSetOfTiltSeries, inputSetOfCtfTomoSeries, tomoThickness, tomoShift,
+                              defocusStep, correctionType, correctAstigmatism, radialFirstParameter,
+                              radialSecondParameter):
         cls.protCTFReconstruction = cls.newProtocol(ProtNovaCtfTomoDefocus,
-                                                    inputSetOfTiltSeries=inputSoTS,
-                                                    ctfEstimationType=ctfEstimationType,
-                                                    protImodCtfEstimation=protImodCtfEstimation,
+                                                    inputSetOfTiltSeries=inputSetOfTiltSeries,
+                                                    inputSetOfCtfTomoSeries=inputSetOfCtfTomoSeries,
                                                     tomoThickness=tomoThickness,
                                                     tomoShift=tomoShift,
                                                     defocusStep=defocusStep,
                                                     correctionType=correctionType,
+                                                    correctAstigmatism=correctAstigmatism,
                                                     radialFirstParameter=radialFirstParameter,
                                                     radialSecondParameter=radialSecondParameter)
+
         cls.launchProtocol(cls.protCTFReconstruction)
+
         return cls.protCTFReconstruction
 
 
@@ -120,54 +127,57 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
 
         cls.thicknessTomo = 20.0
 
-        cls.protImportTS = cls._runImportTiltSeries(filesPath=os.path.split(cls.inputSoTS)[0],
-                                                    pattern="tomo1_bin4.mrc",
-                                                    anglesFrom=0,
-                                                    voltage=300,
-                                                    magnification=50000,
-                                                    sphericalAberration=2.7,
-                                                    amplitudeContrast=0.07,
-                                                    samplingRate=8.8,
-                                                    doseInitial=0,
-                                                    dosePerFrame=0.3,
-                                                    minAngle=-60.0,
-                                                    maxAngle=60.0,
-                                                    stepAngle=3.0)
+        cls.protImportTS = cls._runImportTiltSeries(
+            filesPath=os.path.split(cls.inputSoTS)[0],
+            pattern="tomo1_bin4.mrc",
+            anglesFrom=0,
+            voltage=300,
+            magnification=50000,
+            sphericalAberration=2.7,
+            amplitudeContrast=0.07,
+            samplingRate=8.8,
+            doseInitial=0,
+            dosePerFrame=0.3,
+            minAngle=-60.0,
+            maxAngle=60.0,
+            stepAngle=3.0)
 
-        cls.protCTFEstimation = cls._runCTFEstimation(inputSoTS=cls.protImportTS.outputTiltSeries,
-                                                      defocusTol=200.0,
-                                                      expectedDefocusOrigin=0,
-                                                      expectedDefocusValue=6000,
-                                                      expectedDefocusFile="",
-                                                      axisAngle=0.0,
-                                                      interactiveMode=1,
-                                                      leftDefTol=2000.0,
-                                                      rightDefTol=2000.0,
-                                                      tileSize=256,
-                                                      angleStep=2.0,
-                                                      angleRange=20.0,
-                                                      startFreq=0.0,
-                                                      endFreq=0.0,
-                                                      extraZerosToFit=0.0,
-                                                      skipAstigmaticViews=1,
-                                                      searchAstigmatism=1,
-                                                      findAstigPhaseCutonToggle=1,
-                                                      phaseShiftAstigmatism=0,
-                                                      cutOnFrequencyAstigmatism=0,
-                                                      minimumViewsAstigmatism=3,
-                                                      minimumViewsPhaseShift=1,
-                                                      numberSectorsAstigmatism=36,
-                                                      maximumAstigmatism=1.2)
+        cls.protCTFEstimation = cls._runCTFEstimation(
+            inputSoTS=cls.protImportTS.outputTiltSeries,
+            defocusTol=200.0,
+            expectedDefocusOrigin=0,
+            expectedDefocusValue=6000,
+            expectedDefocusFile="",
+            axisAngle=0.0,
+            interactiveMode=1,
+            leftDefTol=2000.0,
+            rightDefTol=2000.0,
+            tileSize=256,
+            angleStep=2.0,
+            angleRange=20.0,
+            startFreq=0.0,
+            endFreq=0.0,
+            extraZerosToFit=0.0,
+            skipAstigmaticViews=1,
+            searchAstigmatism=1,
+            findAstigPhaseCutonToggle=1,
+            phaseShiftAstigmatism=0,
+            cutOnFrequencyAstigmatism=0,
+            minimumViewsAstigmatism=3,
+            minimumViewsPhaseShift=1,
+            numberSectorsAstigmatism=36,
+            maximumAstigmatism=1.2)
 
-        cls.protCTFReconstruction = cls._runCtfReconstruction(inputSoTS=None,
-                                                              ctfEstimationType=0,
-                                                              protImodCtfEstimation=cls.protCTFEstimation,
-                                                              tomoThickness=cls.thicknessTomo,
-                                                              tomoShift=0,
-                                                              defocusStep=15,
-                                                              correctionType=0,
-                                                              radialFirstParameter=0.3,
-                                                              radialSecondParameter=0.05)
+        cls.protCTFReconstruction = cls._runCtfReconstruction(
+            inputSetOfTiltSeries=cls.protImportTS.outputTiltSeries,
+            inputSetOfCtfTomoSeries=cls.protCTFEstimation.outputSetOfCTFTomoSeries,
+            tomoThickness=cls.thicknessTomo,
+            tomoShift=0,
+            defocusStep=15,
+            correctionType=0,
+            correctAstigmatism=1,
+            radialFirstParameter=0.3,
+            radialSecondParameter=0.05)
 
         wait(condition=lambda: not (cls.proj.getRuns() == 4 and cls.proj.getRuns()[3].isFinished()),
              timeout=600)
