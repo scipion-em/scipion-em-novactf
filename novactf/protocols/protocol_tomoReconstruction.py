@@ -69,9 +69,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
 
-        print("------------------------------------------------------------------------")
-        print(self.protTomoCtfDefocus.get().numberOfIntermediateStacks[0].get())
-
         for index, ts in enumerate(self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()):
             convertInputId = self._insertFunctionStep('convertInputStep',
                                                       ts.getObjId(),
