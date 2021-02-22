@@ -222,6 +222,9 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         self.numberOfIntermediateStacks.append(Integer(numberOfIntermediateStacks))
 
+        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaa")
+        print(numberOfIntermediateStacks)
+
     def triggerReconstructionProtocolStep(self):
         # Local import to avoid looping
         from novactf.protocols import ProtNovaCtfTomoReconstruction
