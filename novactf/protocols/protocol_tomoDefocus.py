@@ -216,16 +216,11 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         numberOfIntermediateStacks = 0
 
         counter = 0
-        print(defocusFilePath + str(counter))
         while os.path.exists(defocusFilePath + str(counter)):
-            print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxx")
             numberOfIntermediateStacks += 1
             counter += 1
 
         self.numberOfIntermediateStacks.append(Integer(numberOfIntermediateStacks))
-
-        print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAaa")
-        print(numberOfIntermediateStacks)
 
     def triggerReconstructionProtocolStep(self):
         # Local import to avoid looping
