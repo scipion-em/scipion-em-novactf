@@ -119,11 +119,11 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         path.makePath(extraPrefix)
 
         """Apply the transformation form the input tilt-series"""
-        outputTsFileName = os.path.join(tmpPrefix, "%s.st" % tsId)
+        outputTsFileName = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName())
         ts.applyTransform(outputTsFileName)
 
         """Generate angle file"""
-        outputTltFileName = os.path.join(tmpPrefix, '%s.tlt' % tsId)
+        outputTltFileName = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
         ts.generateTltFile(outputTltFileName)
 
     def computeCtfCorrectionStep(self, tsObjId, counter):
@@ -131,13 +131,13 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(tsId)
         extraPrefixPreviousProt = self.protTomoCtfDefocus.get()._getExtraPath(tsId)
-        defocusFilePath = os.path.join(extraPrefixPreviousProt, "%s.defocus_" % tsId)
-        tltFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
-        outputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
+        defocusFilePath = os.path.join(extraPrefixPreviousProt, ts.getFirstItem().parseFileName(extension=".defocus_"))
+        tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
+        outputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".st_"))
 
         paramsCtfCorrection = {
             'Algorithm': "ctfCorrection",
-            'InputProjections': os.path.join(tmpPrefix, "%s.st" % tsId),
+            'InputProjections': os.path.join(tmpPrefix, ts.getFirstItem().parseFileName()),
             'OutputFile': outputFilePath + str(counter),
             'DefocusFile': defocusFilePath + str(counter),
             'TiltFile': tltFilePath,
@@ -171,8 +171,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
-        inputFilePath = os.path.join(tmpPrefix, "%s.st_" % tsId)
-        outputFilePath = os.path.join(tmpPrefix, "%s_flip.st_" % tsId)
+        inputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".st_"))
+        outputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
+                                                                                 extension=".st_"))
 
         argsFlip = "flipyz " + inputFilePath + str(counter) + " " + outputFilePath + str(counter)
         imodPlugin.runImod(self, 'clip', argsFlip)
@@ -181,9 +182,11 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
-        flippedFilePath = os.path.join(tmpPrefix, "%s_flip.st_" % tsId)
-        outputFilePath = os.path.join(tmpPrefix, "%s_flip_filter.st_" % tsId)
-        tltFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
+        flippedFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
+                                                                                  extension=".st_"))
+        outputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip_filter",
+                                                                                 extension=".st_"))
+        tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
 
         paramsFilterProjections = {
             'Algorithm': "filterProjections",
@@ -207,12 +210,13 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         tsId = ts.getTsId()
         extraPrefix = self._getExtraPath(ts.getTsId())
         tmpPrefix = self._getTmpPath(ts.getTsId())
-        outputFilePathFlipped = os.path.join(tmpPrefix, "%s.mrc" % tsId)
-        tltFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
+        outputFilePathFlipped = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".mrc"))
+        tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
 
         params3dctf = {
             'Algorithm': "3dctf",
-            'InputProjections': os.path.join(tmpPrefix, "%s_flip_filter.st" % tsId),
+            'InputProjections': os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip_filter",
+                                                                                        extension=".st")),
             'OutputFile': outputFilePathFlipped,
             'TiltFile': tltFilePath,
             'Thickness': self.protTomoCtfDefocus.get().tomoThickness.get(),
@@ -234,7 +238,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
 
-        outputFilePath = os.path.join(extraPrefix, "%s.mrc" % tsId)
+        outputFilePath = os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc"))
 
         argsTrimvol = outputFilePathFlipped + " "
         argsTrimvol += outputFilePath + " "
@@ -254,7 +258,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         extraPrefix = self._getExtraPath(tsId)
         newTomogram = Tomogram()
         newTomogram.copyInfo(ts)
-        newTomogram.setLocation(os.path.join(extraPrefix, "%s.mrc" % tsId))
+        newTomogram.setLocation(os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc")))
         outputSetOfTomograms.append(newTomogram)
         outputSetOfTomograms.update(newTomogram)
         outputSetOfTomograms.write()

@@ -160,7 +160,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         path.makePath(extraPrefix)
 
         """Generate angle file"""
-        angleFilePath = os.path.join(tmpPrefix, "%s.tlt" % tsId)
+        angleFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
         ts.generateTltFile(angleFilePath)
 
         """Generate defocus file"""
@@ -181,7 +181,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             'InputProjections': ts.getFirstItem().getLocation()[1],
             'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[1]),
             'Thickness': self.tomoThickness.get(),
-            'TiltFile': os.path.join(tmpPrefix, "%s.tlt" % tsId),
+            'TiltFile': os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt")),
             'Shift': "0.0," + str(self.tomoShift.get()),
             'CorrectionType': self.getCorrectionType(),
             'DefocusFileFormat': "imod",
@@ -208,11 +208,11 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
     def getNumberOfIntermediateStacksStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
-        tsId = ts.getTsId()
 
         extraPrefix = self._getExtraPath(ts.getTsId())
 
-        defocusFilePath = os.path.join(extraPrefix, "%s.defocus_" % tsId)
+        defocusFilePath = os.path.join(extraPrefix,
+                                       ts.getFirstItem().parseFileName(extension=".defocus_"))
         numberOfIntermediateStacks = 0
 
         counter = 0
