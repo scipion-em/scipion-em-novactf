@@ -208,7 +208,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         tsId = ts.getTsId()
         extraPrefix = self._getExtraPath(tsId)
         tmpPrefix = self._getTmpPath(tsId)
-        outputFilePathFlipped = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".mrc"))
+        outputFilePathFlipped = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
+                                                                                        extension=".mrc"))
         tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
 
         params3dctf = {
