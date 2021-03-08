@@ -237,13 +237,16 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
 
-        outputFilePath = os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc"))
+        paramsTrimvol = {
+            'inputFilePath': outputFilePathFlipped,
+            'outputFilePath': os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc"))
+        }
 
-        argsTrimvol = outputFilePathFlipped + " "
-        argsTrimvol += outputFilePath + " "
-        argsTrimvol += "-yz "
+        argsTrimvol = "%(inputFilePath)s " \
+                      "%(outputFilePath)s " \
+                      "-yz "
 
-        imodPlugin.runImod(self, 'trimvol', argsTrimvol)
+        imodPlugin.runImod(self, 'trimvol', argsTrimvol % paramsTrimvol)
 
     def createOutputStep(self, tsObjId):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
