@@ -264,7 +264,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         extraPrefix = self._getExtraPath(tsId)
 
         newTomogram = Tomogram()
-        newTomogram.copyInfo(ts)
         newTomogram.setLocation(os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc")))
 
         # Set tomogram origin
