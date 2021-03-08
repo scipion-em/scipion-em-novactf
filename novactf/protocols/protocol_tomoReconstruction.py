@@ -111,6 +111,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                      ts.getObjId(),
                                      prerequisites=[reconstructionId])
 
+        self._insertFunctionStep('closeOutputSetsStep')
+
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
@@ -283,6 +285,11 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         outputSetOfTomograms.append(newTomogram)
         outputSetOfTomograms.update(newTomogram)
         outputSetOfTomograms.write()
+        self._store()
+
+    def closeOutputSetsStep(self):
+        self.getOutputSetOfTomograms().setStreamState(Set.STREAM_CLOSED)
+
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
