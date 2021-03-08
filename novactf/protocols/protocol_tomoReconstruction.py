@@ -25,13 +25,15 @@
 # **************************************************************************
 
 import os
+
+from pwem.objects import Transform
 from pyworkflow.object import Set
 import pyworkflow.protocol.params as params
 import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
-from tomo.objects import Tomogram
+from tomo.objects import Tomogram, TomoAcquisition
 from novactf import Plugin
 from novactf.protocols import ProtNovaCtfTomoDefocus
 from imod import Plugin as imodPlugin
