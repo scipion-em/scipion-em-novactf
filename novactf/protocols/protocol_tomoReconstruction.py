@@ -169,7 +169,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     def computeFlipStep(self, tsObjId, counter):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
-        tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         inputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".st_"))
         outputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
@@ -180,7 +179,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     def computeFilteringStep(self, tsObjId, counter):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
-        tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         flippedFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
                                                                                   extension=".st_"))
@@ -208,8 +206,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     def computeReconstructionStep(self, tsObjId):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
-        extraPrefix = self._getExtraPath(ts.getTsId())
-        tmpPrefix = self._getTmpPath(ts.getTsId())
+        extraPrefix = self._getExtraPath(tsId)
+        tmpPrefix = self._getTmpPath(tsId)
         outputFilePathFlipped = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".mrc"))
         tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
 
@@ -251,7 +249,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         tsId = ts.getTsId()
 
         """Remove intermediate files. Necessary for big sets of tilt-series"""
-        path.cleanPath(self._getTmpPath(tsId))
+        # path.cleanPath(self._getTmpPath(tsId))
 
         """Generate output set"""
         outputSetOfTomograms = self.getOutputSetOfTomograms()
