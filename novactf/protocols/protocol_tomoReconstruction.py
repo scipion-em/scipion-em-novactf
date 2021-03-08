@@ -258,9 +258,26 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         """Generate output set"""
         outputSetOfTomograms = self.getOutputSetOfTomograms()
         extraPrefix = self._getExtraPath(tsId)
+
         newTomogram = Tomogram()
         newTomogram.copyInfo(ts)
         newTomogram.setLocation(os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc")))
+
+        # Set tomogram origin
+        origin = Transform()
+        sr = self.inputSetOfTiltSeries.get().getSamplingRate()
+        origin.setShifts(ts.getFirstItem().getXDim() / -2. * sr,
+                         ts.getFirstItem().getYDim() / -2. * sr,
+                         self.tomoThickness.get() / -2 * sr)
+        newTomogram.setOrigin(origin)
+
+        # Set tomogram acquisition
+        acquisition = TomoAcquisition()
+        acquisition.setAngleMin(ts.getFirstItem().getTiltAngle())
+        acquisition.setAngleMax(ts[ts.getSize()].getTiltAngle())
+        acquisition.setStep(self.getAngleStepFromSeries(ts))
+        newTomogram.setAcquisition(acquisition)
+
         outputSetOfTomograms.append(newTomogram)
         outputSetOfTomograms.update(newTomogram)
         outputSetOfTomograms.write()
@@ -286,6 +303,18 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             self._defineSourceRelation(self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get(), outputSetOfTomograms)
 
         return self.outputSetOfTomograms
+
+    @staticmethod
+    def getAngleStepFromSeries(ts):
+        """ This method return the average angles step from a series. """
+
+        angleStepAverage = 0
+        for i in range(1, ts.getSize()):
+            angleStepAverage += abs(ts[i].getTiltAngle()-ts[i+1].getTiltAngle())
+
+        angleStepAverage /= ts.getSize()-1
+
+        return angleStepAverage
 
     # --------------------------- INFO functions ----------------------------
     def _summary(self):
