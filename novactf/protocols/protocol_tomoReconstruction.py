@@ -212,8 +212,12 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         tsId = ts.getTsId()
         extraPrefix = self._getExtraPath(tsId)
         tmpPrefix = self._getTmpPath(tsId)
-        outputFilePathFlipped = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
-                                                                                        extension=".mrc"))
+
+        outputFileName = ts.getFirstItem().parseFileName(extension=".mrc")
+        # outputFilePathFlipped = os.path.join(tmpPrefix,
+        #                                      ts.getFirstItem().parseFileName(suffix="_flip", extension=".mrc"))
+        outputFilePathFlipped = os.path.join(tmpPrefix, outputFileName)
+
         tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
 
         params3dctf = {
@@ -243,7 +247,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         paramsTrimvol = {
             'inputFilePath': outputFilePathFlipped,
-            'outputFilePath': os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc"))
+            'outputFilePath': os.path.join(extraPrefix, outputFileName)
         }
 
         argsTrimvol = "%(inputFilePath)s " \
@@ -257,7 +261,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         tsId = ts.getTsId()
 
         """Remove intermediate files. Necessary for big sets of tilt-series"""
-        path.cleanPath(self._getTmpPath(tsId))
+        #  path.cleanPath(self._getTmpPath(tsId))
 
         """Generate output set"""
         outputSetOfTomograms = self.getOutputSetOfTomograms()
