@@ -27,6 +27,7 @@
 import os
 
 from pwem.objects import Transform
+from pyworkflow import BETA
 from pyworkflow.object import Set
 import pyworkflow.protocol.params as params
 import pyworkflow.utils.path as path
@@ -48,6 +49,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     """
 
     _label = 'tomo ctf reconstruction'
+    _devStatus = BETA
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)

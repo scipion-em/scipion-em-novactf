@@ -25,6 +25,7 @@
 # **************************************************************************
 
 import os
+from pyworkflow import BETA
 import pyworkflow.protocol.params as params
 from pyworkflow.project import Manager
 import pyworkflow.utils.path as path
@@ -45,6 +46,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     """
 
     _label = 'tomo ctf defocus'
+    _devStatus = BETA
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
