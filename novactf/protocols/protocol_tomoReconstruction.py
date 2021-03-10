@@ -214,8 +214,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         tmpPrefix = self._getTmpPath(tsId)
 
         outputFileName = ts.getFirstItem().parseFileName(extension=".mrc")
-        # outputFilePathFlipped = os.path.join(tmpPrefix,
-        #                                      ts.getFirstItem().parseFileName(suffix="_flip", extension=".mrc"))
         outputFilePathFlipped = os.path.join(tmpPrefix, outputFileName)
 
         tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
@@ -260,12 +258,13 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
 
+        extraPrefix = self._getExtraPath(tsId)
+
         """Remove intermediate files. Necessary for big sets of tilt-series"""
-        #  path.cleanPath(self._getTmpPath(tsId))
+        path.cleanPath(self._getTmpPath(tsId))
 
         """Generate output set"""
         outputSetOfTomograms = self.getOutputSetOfTomograms()
-        extraPrefix = self._getExtraPath(tsId)
 
         newTomogram = Tomogram()
         newTomogram.setLocation(os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc")))
@@ -286,7 +285,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         newTomogram.setAcquisition(acquisition)
 
         outputSetOfTomograms.append(newTomogram)
-        outputSetOfTomograms.update(newTomogram)
         outputSetOfTomograms.write()
         self._store()
 
