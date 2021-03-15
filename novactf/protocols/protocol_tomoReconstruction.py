@@ -25,13 +25,16 @@
 # **************************************************************************
 
 import os
+
+from pwem.objects import Transform
+from pyworkflow import BETA
 from pyworkflow.object import Set
 import pyworkflow.protocol.params as params
 import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
-from tomo.objects import Tomogram
+from tomo.objects import Tomogram, TomoAcquisition
 from novactf import Plugin
 from novactf.protocols import ProtNovaCtfTomoDefocus
 from imod import Plugin as imodPlugin
@@ -46,6 +49,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     """
 
     _label = 'tomo ctf reconstruction'
+    _devStatus = BETA
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
@@ -109,6 +113,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                      ts.getObjId(),
                                      prerequisites=[reconstructionId])
 
+        self._insertFunctionStep('closeOutputSetsStep')
+
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
@@ -169,7 +175,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     def computeFlipStep(self, tsObjId, counter):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
-        tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         inputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".st_"))
         outputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
@@ -180,7 +185,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     def computeFilteringStep(self, tsObjId, counter):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
-        tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(ts.getTsId())
         flippedFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
                                                                                   extension=".st_"))
@@ -208,9 +212,12 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     def computeReconstructionStep(self, tsObjId):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
-        extraPrefix = self._getExtraPath(ts.getTsId())
-        tmpPrefix = self._getTmpPath(ts.getTsId())
-        outputFilePathFlipped = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".mrc"))
+        extraPrefix = self._getExtraPath(tsId)
+        tmpPrefix = self._getTmpPath(tsId)
+
+        outputFileName = ts.getFirstItem().parseFileName(extension=".mrc")
+        outputFilePathFlipped = os.path.join(tmpPrefix, outputFileName)
+
         tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
 
         params3dctf = {
@@ -238,30 +245,54 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
 
-        outputFilePath = os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc"))
+        paramsTrimvol = {
+            'inputFilePath': outputFilePathFlipped,
+            'outputFilePath': os.path.join(extraPrefix, outputFileName)
+        }
 
-        argsTrimvol = outputFilePathFlipped + " "
-        argsTrimvol += outputFilePath + " "
-        argsTrimvol += "-yz "
+        argsTrimvol = "%(inputFilePath)s " \
+                      "%(outputFilePath)s " \
+                      "-yz "
 
-        imodPlugin.runImod(self, 'trimvol', argsTrimvol)
+        imodPlugin.runImod(self, 'trimvol', argsTrimvol % paramsTrimvol)
 
     def createOutputStep(self, tsObjId):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
         tsId = ts.getTsId()
+
+        extraPrefix = self._getExtraPath(tsId)
 
         """Remove intermediate files. Necessary for big sets of tilt-series"""
         path.cleanPath(self._getTmpPath(tsId))
 
         """Generate output set"""
         outputSetOfTomograms = self.getOutputSetOfTomograms()
-        extraPrefix = self._getExtraPath(tsId)
+
         newTomogram = Tomogram()
-        newTomogram.copyInfo(ts)
         newTomogram.setLocation(os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc")))
+
+        # Set tomogram origin
+        origin = Transform()
+        sr = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate()
+        origin.setShifts(ts.getFirstItem().getXDim() / -2. * sr,
+                         ts.getFirstItem().getYDim() / -2. * sr,
+                         self.protTomoCtfDefocus.get().tomoThickness.get() / -2 * sr)
+        newTomogram.setOrigin(origin)
+
+        # Set tomogram acquisition
+        acquisition = TomoAcquisition()
+        acquisition.setAngleMin(ts.getFirstItem().getTiltAngle())
+        acquisition.setAngleMax(ts[ts.getSize()].getTiltAngle())
+        acquisition.setStep(self.getAngleStepFromSeries(ts))
+        newTomogram.setAcquisition(acquisition)
+
         outputSetOfTomograms.append(newTomogram)
-        outputSetOfTomograms.update(newTomogram)
         outputSetOfTomograms.write()
+        self._store()
+
+    def closeOutputSetsStep(self):
+        self.getOutputSetOfTomograms().setStreamState(Set.STREAM_CLOSED)
+
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
@@ -284,6 +315,18 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             self._defineSourceRelation(self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get(), outputSetOfTomograms)
 
         return self.outputSetOfTomograms
+
+    @staticmethod
+    def getAngleStepFromSeries(ts):
+        """ This method return the average angles step from a series. """
+
+        angleStepAverage = 0
+        for i in range(1, ts.getSize()):
+            angleStepAverage += abs(ts[i].getTiltAngle()-ts[i+1].getTiltAngle())
+
+        angleStepAverage /= ts.getSize()-1
+
+        return angleStepAverage
 
     # --------------------------- INFO functions ----------------------------
     def _summary(self):
