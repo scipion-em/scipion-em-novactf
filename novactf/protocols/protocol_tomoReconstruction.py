@@ -274,11 +274,14 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     def createOutputStep(self, tsObjId):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+
         tsId = ts.getTsId()
+        angleMax = ts[ts.getSize()].getTiltAngle()
+        angleStepAverage = self.getAngleStepFromSeries(ts)
 
         extraPrefix = self._getExtraPath(tsId)
 
-        firstItem = ts.getFirstItem()
+        firstItem = ts.getFirstItem().clone()
 
         """Remove intermediate files. Necessary for big sets of tilt-series"""
         path.cleanPath(self._getTmpPath(tsId))
@@ -307,8 +310,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         # Set tomogram acquisition
         acquisition = TomoAcquisition()
         acquisition.setAngleMin(firstItem.getTiltAngle())
-        acquisition.setAngleMax(ts[ts.getSize()].getTiltAngle())
-        acquisition.setStep(self.getAngleStepFromSeries(ts))
+        acquisition.setAngleMax(angleMax)
+        acquisition.setStep(angleStepAverage)
         newTomogram.setAcquisition(acquisition)
 
         outputSetOfTomograms.append(newTomogram)
