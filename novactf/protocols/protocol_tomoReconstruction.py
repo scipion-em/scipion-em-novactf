@@ -28,6 +28,7 @@ import os
 
 from pwem.objects import Transform
 from pyworkflow import BETA
+from pyworkflow.exceptions import PyworkflowException
 from pyworkflow.object import Set
 import pyworkflow.protocol.params as params
 import pyworkflow.utils.path as path
@@ -73,6 +74,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
 
+        allCreateOutputId = []
+
         for index, ts in enumerate(self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()):
             convertInputId = self._insertFunctionStep('convertInputStep',
                                                       ts.getObjId(),
@@ -109,11 +112,13 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                                         ts.getObjId(),
                                                         prerequisites=allFilterId)
 
-            self._insertFunctionStep('createOutputStep',
-                                     ts.getObjId(),
-                                     prerequisites=[reconstructionId])
+            createOutputId = self._insertFunctionStep('createOutputStep',
+                                                      ts.getObjId(),
+                                                      prerequisites=[reconstructionId])
+            allCreateOutputId.append(createOutputId)
 
-        self._insertFunctionStep('closeOutputSetsStep')
+        self._insertFunctionStep('closeOutputSetsStep',
+                                 prerequisites=allCreateOutputId)
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
@@ -124,8 +129,12 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         path.makePath(tmpPrefix)
         path.makePath(extraPrefix)
 
+        print(ts.getFirstItem().getDim())
+
         """Apply the transformation form the input tilt-series"""
         outputTsFileName = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName())
+
+        print(outputTsFileName)
         ts.applyTransform(outputTsFileName)
 
         """Generate angle file"""
@@ -215,19 +224,26 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         extraPrefix = self._getExtraPath(tsId)
         tmpPrefix = self._getTmpPath(tsId)
 
-        outputFileName = ts.getFirstItem().parseFileName(extension=".mrc")
-        outputFilePathFlipped = os.path.join(tmpPrefix, outputFileName)
+        firstItem = ts.getFirstItem()
 
-        tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
+        outputFileNameFlip = firstItem.parseFileName(suffix="_flip", extension=".mrc")
+        outputFileName = firstItem.parseFileName(extension=".mrc")
+
+        print("*** otuput file name")
+        print(outputFileNameFlip)
+        outputFilePathFlipped = os.path.join(tmpPrefix, outputFileNameFlip)
+        print(outputFilePathFlipped)
+
+        tltFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt"))
 
         params3dctf = {
             'Algorithm': "3dctf",
-            'InputProjections': os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip_filter",
+            'InputProjections': os.path.join(tmpPrefix, firstItem.parseFileName(suffix="_flip_filter",
                                                                                         extension=".st")),
             'OutputFile': outputFilePathFlipped,
             'TiltFile': tltFilePath,
             'Thickness': self.protTomoCtfDefocus.get().tomoThickness.get(),
-            'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[1]),
+            'FullImage': str(firstItem.getDim()[0]) + "," + str(firstItem.getDim()[1]),
             'Shift': "0.0," + str(self.protTomoCtfDefocus.get().tomoShift.get()),
             'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.protTomoCtfDefocus.get().defocusStep.get()
@@ -258,9 +274,14 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     def createOutputStep(self, tsObjId):
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+
         tsId = ts.getTsId()
+        angleMax = ts[ts.getSize()].getTiltAngle()
+        angleStepAverage = self.getAngleStepFromSeries(ts)
 
         extraPrefix = self._getExtraPath(tsId)
+
+        firstItem = ts.getFirstItem().clone()
 
         """Remove intermediate files. Necessary for big sets of tilt-series"""
         path.cleanPath(self._getTmpPath(tsId))
@@ -269,21 +290,28 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         outputSetOfTomograms = self.getOutputSetOfTomograms()
 
         newTomogram = Tomogram()
-        newTomogram.setLocation(os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".mrc")))
+        newTomogram.setLocation(os.path.join(extraPrefix, firstItem.parseFileName(extension=".mrc")))
+
+        if not os.path.exists(newTomogram.getFileName()):
+            raise PyworkflowException("%s does not exist."
+                                      "\ntsObj: %d"
+                                      "\ntsId: %s"
+                                      "\nobject tsId %s"
+                                      % (newTomogram.getFileName(), tsObjId, tsId, ts.getFirstItem().getTsId()))
 
         # Set tomogram origin
         origin = Transform()
         sr = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate()
-        origin.setShifts(ts.getFirstItem().getXDim() / -2. * sr,
-                         ts.getFirstItem().getYDim() / -2. * sr,
+        origin.setShifts(firstItem.getXDim() / -2. * sr,
+                         firstItem.getYDim() / -2. * sr,
                          self.protTomoCtfDefocus.get().tomoThickness.get() / -2 * sr)
         newTomogram.setOrigin(origin)
 
         # Set tomogram acquisition
         acquisition = TomoAcquisition()
-        acquisition.setAngleMin(ts.getFirstItem().getTiltAngle())
-        acquisition.setAngleMax(ts[ts.getSize()].getTiltAngle())
-        acquisition.setStep(self.getAngleStepFromSeries(ts))
+        acquisition.setAngleMin(firstItem.getTiltAngle())
+        acquisition.setAngleMax(angleMax)
+        acquisition.setStep(angleStepAverage)
         newTomogram.setAcquisition(acquisition)
 
         outputSetOfTomograms.append(newTomogram)
@@ -322,9 +350,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         angleStepAverage = 0
         for i in range(1, ts.getSize()):
-            angleStepAverage += abs(ts[i].getTiltAngle()-ts[i+1].getTiltAngle())
+            angleStepAverage += abs(ts[i].getTiltAngle() - ts[i + 1].getTiltAngle())
 
-        angleStepAverage /= ts.getSize()-1
+        angleStepAverage /= ts.getSize() - 1
 
         return angleStepAverage
 
