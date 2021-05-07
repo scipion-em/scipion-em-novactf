@@ -122,37 +122,42 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
-        ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+        with self._lock:
+            ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+            ti = ts.getFirstItem()
+
         tsId = ts.getTsId()
         extraPrefix = self._getExtraPath(tsId)
         tmpPrefix = self._getTmpPath(tsId)
         path.makePath(tmpPrefix)
         path.makePath(extraPrefix)
 
-        print(ts.getFirstItem().getDim())
+        print(ti.getDim())
 
         """Apply the transformation form the input tilt-series"""
-        outputTsFileName = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName())
+        outputTsFileName = os.path.join(tmpPrefix, ti.parseFileName())
 
         print(outputTsFileName)
-        ts.applyTransform(outputTsFileName)
-
-        """Generate angle file"""
-        outputTltFileName = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
-        ts.generateTltFile(outputTltFileName)
+        with self._lock:
+            ts.applyTransform(outputTsFileName)
+            """Generate angle file"""
+            outputTltFileName = os.path.join(tmpPrefix, ti.parseFileName(extension=".tlt"))
+            ts.generateTltFile(outputTltFileName)
 
     def computeCtfCorrectionStep(self, tsObjId, counter):
-        ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+        with self._lock:
+            ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+            ti = ts.getFirstItem()
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(tsId)
         extraPrefixPreviousProt = self.protTomoCtfDefocus.get()._getExtraPath(tsId)
-        defocusFilePath = os.path.join(extraPrefixPreviousProt, ts.getFirstItem().parseFileName(extension=".defocus_"))
-        tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
-        outputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".st_"))
+        defocusFilePath = os.path.join(extraPrefixPreviousProt, ti.parseFileName(extension=".defocus_"))
+        tltFilePath = os.path.join(tmpPrefix, ti.parseFileName(extension=".tlt"))
+        outputFilePath = os.path.join(tmpPrefix, ti.parseFileName(extension=".st_"))
 
         paramsCtfCorrection = {
             'Algorithm': "ctfCorrection",
-            'InputProjections': os.path.join(tmpPrefix, ts.getFirstItem().parseFileName()),
+            'InputProjections': os.path.join(tmpPrefix, ti.parseFileName()),
             'OutputFile': outputFilePath + str(counter),
             'DefocusFile': defocusFilePath + str(counter),
             'TiltFile': tltFilePath,
