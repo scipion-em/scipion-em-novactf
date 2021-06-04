@@ -69,26 +69,26 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                       pointerClass='SetOfCTFTomoSeries',
                       help='Select the CTF estimation from the set of tilt-series.')
 
-        form.addParam('tomoThickness (voxels)',
+        form.addParam('tomoThickness',
                       params.FloatParam,
                       default=100,
-                      label='Tomogram thickness',
+                      label='Tomogram thickness (voxels)',
                       important=True,
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Size in voxels of the tomogram in the z axis (beam direction).')
 
-        form.addParam('tomoShift (voxels)',
+        form.addParam('tomoShift',
                       params.FloatParam,
                       default=0,
-                      label='Tomogram shift',
+                      label='Tomogram shift (voxels)',
                       important=True,
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Shift in voxels of the tomogram in the z axis (beam direction).')
 
-        form.addParam('defocusStep (nm)',
+        form.addParam('defocusStep',
                       params.IntParam,
                       default=15,
-                      label='Defocus step',
+                      label='Defocus step (nm)',
                       important=True,
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Minimum defocus difference used for reconstruction in nanometers.')
