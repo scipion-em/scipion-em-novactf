@@ -189,12 +189,24 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         Plugin.runNovactf(self, 'novaCTF', argsCtfCorrection % paramsCtfCorrection)
 
         # Flipping step
-        inputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".st_"))
-        outputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
-                                                                                 extension=".st_"))
+        # inputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".st_"))
+        # outputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
+        #                                                                          extension=".st_"))
+        #
+        # argsFlip = "flipyz " + inputFilePath + str(counter) + " " + outputFilePath + str(counter)
+        # imodPlugin.runImod(self, 'clip', argsFlip)
 
-        argsFlip = "flipyz " + inputFilePath + str(counter) + " " + outputFilePath + str(counter)
-        imodPlugin.runImod(self, 'clip', argsFlip)
+        paramsClip = {
+            'inputFilePath': os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".st_" + str(counter))),
+            'outputFilePath': os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
+                                                                                      extension=".st_" + str(counter))),
+        }
+
+        argsClip = "flipyz " \
+                   "%(inputFilePath)s " \
+                   "%(outputFilePath)s"
+
+        imodPlugin.runImod(self, 'clip', argsClip % paramsClip)
 
         # Filtering step
         flippedFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
@@ -218,6 +230,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                 "-TILTFILE %(TiltFile)s " \
                                 "-StackOrientation %(StackOrientation)s " \
                                 "-RADIAL %(Radial)s"
+
         Plugin.runNovactf(self, 'novaCTF', argsFilterProjections % paramsFilterProjections)
 
     def computeReconstructionStep(self, tsObjId):
