@@ -68,7 +68,7 @@ class TestNovaCtfBase(BaseTest):
                           minimumViewsAstigmatism, minimumViewsPhaseShift, numberSectorsAstigmatism,
                           maximumAstigmatism):
         cls.protCTFEstimation = cls.newProtocol(imod.protocols.ProtImodCtfEstimation,
-                                                inputSetOfTiltSeries=inputSoTS,
+                                                inputSet=inputSoTS,
                                                 defocusTol=defocusTol,
                                                 expectedDefocusOrigin=expectedDefocusOrigin,
                                                 expectedDefocusValue=expectedDefocusValue,
