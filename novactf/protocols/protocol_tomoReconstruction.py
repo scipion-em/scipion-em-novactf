@@ -84,29 +84,11 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             allCtfId = []
 
             for counterCtf in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get()):
-                ctfId = self._insertFunctionStep('computeCtfCorrectionStep',
+                ctfId = self._insertFunctionStep(self.computeCtfCorrectionStep,
                                                  ts.getObjId(),
                                                  counterCtf,
                                                  prerequisites=[convertInputId])
                 allCtfId.append(ctfId)
-
-            # allFlipId = []
-            #
-            # for counterFlip in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get()):
-            #     flipId = self._insertFunctionStep('computeFlipStep',
-            #                                       ts.getObjId(),
-            #                                       counterFlip,
-            #                                       prerequisites=allCtfId)
-            #     allFlipId.append(flipId)
-            #
-            # allFilterId = []
-            #
-            # for counterFilter in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get()):
-            #     filterId = self._insertFunctionStep('computeFilteringStep',
-            #                                         ts.getObjId(),
-            #                                         counterFilter,
-            #                                         prerequisites=allFlipId)
-            #     allFilterId.append(filterId)
 
             reconstructionId = self._insertFunctionStep('computeReconstructionStep',
                                                         ts.getObjId(),
@@ -197,8 +179,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         # imodPlugin.runImod(self, 'clip', argsFlip)
 
         paramsClip = {
-            'inputFilePath': os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".st_" + str(counter))),
-            'outputFilePath': os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
+            'inputFilePath': os.path.join(tmpPrefix, ti.parseFileName(extension=".st_" + str(counter))),
+            'outputFilePath': os.path.join(tmpPrefix, ti.parseFileName(suffix="_flip",
                                                                                       extension=".st_" + str(counter))),
         }
 
@@ -209,11 +191,11 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         imodPlugin.runImod(self, 'clip', argsClip % paramsClip)
 
         # Filtering step
-        flippedFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
+        flippedFilePath = os.path.join(tmpPrefix, ti.parseFileName(suffix="_flip",
                                                                                   extension=".st_"))
-        outputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip_filter",
+        outputFilePath = os.path.join(tmpPrefix, ti.parseFileName(suffix="_flip_filter",
                                                                                  extension=".st_"))
-        tltFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
+        tltFilePath = os.path.join(tmpPrefix, ti.parseFileName(extension=".tlt"))
 
         paramsFilterProjections = {
             'Algorithm': "filterProjections",
@@ -312,7 +294,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                       "\ntsObj: %d"
                                       "\ntsId: %s"
                                       "\nobject tsId %s"
-                                      % (newTomogram.getFileName(), tsObjId, tsId, ts.getFirstItem().getTsId()))
+                                      % (newTomogram.getFileName(), tsObjId, tsId, firstItem.getTsId()))
 
         # Set tomogram origin
         origin = Transform()
