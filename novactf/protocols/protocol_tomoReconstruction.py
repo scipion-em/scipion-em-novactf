@@ -77,7 +77,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         allCreateOutputId = []
 
         for index, ts in enumerate(self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()):
-            convertInputId = self._insertFunctionStep('convertInputStep',
+            convertInputId = self._insertFunctionStep(self.convertInputStep,
                                                       ts.getObjId(),
                                                       prerequisites=[])
 
@@ -90,16 +90,16 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                                  prerequisites=[convertInputId])
                 intermediateStacksId.append(ctfId)
 
-            reconstructionId = self._insertFunctionStep('computeReconstructionStep',
+            reconstructionId = self._insertFunctionStep(self.computeReconstructionStep,
                                                         ts.getObjId(),
                                                         prerequisites=intermediateStacksId)
 
-            createOutputId = self._insertFunctionStep('createOutputStep',
+            createOutputId = self._insertFunctionStep(self.createOutputStep,
                                                       ts.getObjId(),
                                                       prerequisites=[reconstructionId])
             allCreateOutputId.append(createOutputId)
 
-        self._insertFunctionStep('closeOutputSetsStep',
+        self._insertFunctionStep(self.closeOutputSetsStep,
                                  prerequisites=allCreateOutputId)
 
     # --------------------------- STEPS functions ----------------------------
