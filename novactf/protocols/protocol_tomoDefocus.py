@@ -161,12 +161,14 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         path.makePath(tmpPrefix)
         path.makePath(extraPrefix)
 
+        firstItem = ts.getFirstItem()
+
         """Generate angle file"""
-        angleFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt"))
+        angleFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt"))
         ts.generateTltFile(angleFilePath)
 
         """Generate defocus file"""
-        defocusFilePath = os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".defocus"))
+        defocusFilePath = os.path.join(extraPrefix, firstItem.parseFileName(extension=".defocus"))
         imodUtils.generateDefocusIMODFileFromObject(ctfTomoSeries, defocusFilePath)
 
     def computeDefocusStep(self, tsObjId):
@@ -176,14 +178,16 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         tmpPrefix = self._getTmpPath(ts.getTsId())
         extraPrefix = self._getExtraPath(tsId)
 
-        defocusFilePath = os.path.join(extraPrefix, ts.getFirstItem().parseFileName(extension=".defocus"))
+        firstItem = ts.getFirstItem()
+
+        defocusFilePath = os.path.join(extraPrefix, firstItem.parseFileName(extension=".defocus"))
 
         paramsDefocus = {
             'Algorithm': "defocus",
-            'InputProjections': ts.getFirstItem().getLocation()[1],
-            'FullImage': str(ts.getFirstItem().getDim()[0]) + "," + str(ts.getFirstItem().getDim()[1]),
+            'InputProjections': firstItem.getLocation()[1],
+            'FullImage': str(firstItem.getDim()[0]) + "," + str(firstItem.getDim()[1]),
             'Thickness': self.tomoThickness.get(),
-            'TiltFile': os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".tlt")),
+            'TiltFile': os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt")),
             'Shift': "0.0," + str(self.tomoShift.get()),
             'CorrectionType': self.getCorrectionType(),
             'DefocusFileFormat': "imod",
