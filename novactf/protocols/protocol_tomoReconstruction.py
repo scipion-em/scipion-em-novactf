@@ -81,18 +81,18 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                                       ts.getObjId(),
                                                       prerequisites=[])
 
-            allCtfId = []
+            intermediateStacksId = []
 
-            for counterCtf in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get()):
-                ctfId = self._insertFunctionStep(self.computeCtfCorrectionStep,
+            for counter in range(0, self.protTomoCtfDefocus.get().numberOfIntermediateStacks[index].get()):
+                ctfId = self._insertFunctionStep(self.processIntermediateStacksStep,
                                                  ts.getObjId(),
-                                                 counterCtf,
+                                                 counter,
                                                  prerequisites=[convertInputId])
-                allCtfId.append(ctfId)
+                intermediateStacksId.append(ctfId)
 
             reconstructionId = self._insertFunctionStep('computeReconstructionStep',
                                                         ts.getObjId(),
-                                                        prerequisites=allCtfId)
+                                                        prerequisites=intermediateStacksId)
 
             createOutputId = self._insertFunctionStep('createOutputStep',
                                                       ts.getObjId(),
@@ -126,18 +126,20 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             outputTltFileName = os.path.join(tmpPrefix, ti.parseFileName(extension=".tlt"))
             ts.generateTltFile(outputTltFileName)
 
-    def computeCtfCorrectionStep(self, tsObjId, counter):
-        # CTF correction step
+    def processIntermediateStacksStep(self, tsObjId, counter):
         with self._lock:
             ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
             ti = ts.getFirstItem()
+
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(tsId)
         extraPrefixPreviousProt = self.protTomoCtfDefocus.get()._getExtraPath(tsId)
+
         defocusFilePath = os.path.join(extraPrefixPreviousProt, ti.parseFileName(extension=".defocus_"))
         tltFilePath = os.path.join(tmpPrefix, ti.parseFileName(extension=".tlt"))
         outputFilePath = os.path.join(tmpPrefix, ti.parseFileName(extension=".st_"))
 
+        # CTF correction step
         paramsCtfCorrection = {
             'Algorithm': "ctfCorrection",
             'InputProjections': os.path.join(tmpPrefix, ti.parseFileName()),
@@ -171,13 +173,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         Plugin.runNovactf(self, 'novaCTF', argsCtfCorrection % paramsCtfCorrection)
 
         # Flipping step
-        # inputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(extension=".st_"))
-        # outputFilePath = os.path.join(tmpPrefix, ts.getFirstItem().parseFileName(suffix="_flip",
-        #                                                                          extension=".st_"))
-        #
-        # argsFlip = "flipyz " + inputFilePath + str(counter) + " " + outputFilePath + str(counter)
-        # imodPlugin.runImod(self, 'clip', argsFlip)
-
         paramsClip = {
             'inputFilePath': os.path.join(tmpPrefix, ti.parseFileName(extension=".st_" + str(counter))),
             'outputFilePath': os.path.join(tmpPrefix, ti.parseFileName(suffix="_flip",
@@ -191,10 +186,10 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         imodPlugin.runImod(self, 'clip', argsClip % paramsClip)
 
         # Filtering step
-        flippedFilePath = os.path.join(tmpPrefix, ti.parseFileName(suffix="_flip",
-                                                                                  extension=".st_"))
-        outputFilePath = os.path.join(tmpPrefix, ti.parseFileName(suffix="_flip_filter",
-                                                                                 extension=".st_"))
+        flippedFilePath = os.path.join(tmpPrefix,
+                                       ti.parseFileName(suffix="_flip", extension=".st_"))
+        outputFilePath = os.path.join(tmpPrefix,
+                                      ti.parseFileName(suffix="_flip_filter", extension=".st_"))
         tltFilePath = os.path.join(tmpPrefix, ti.parseFileName(extension=".tlt"))
 
         paramsFilterProjections = {
