@@ -95,7 +95,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         form.addParam('correctionType',
                       params.EnumParam,
-                      choices=['Phase filp', 'Multiplication'],
+                      choices=['Phase flip', 'Multiplication'],
                       default=0,
                       label='Correction type',
                       important=True,
