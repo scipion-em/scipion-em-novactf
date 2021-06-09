@@ -30,7 +30,7 @@ from .constants import NOVACTF_HOME
 
 __version__ = '3.0.2'
 _logo = ""
-_references = []
+_references = ["Turonova2017"]
 
 
 class Plugin(pwem.Plugin):
