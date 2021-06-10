@@ -28,7 +28,7 @@ import pwem
 
 from .constants import NOVACTF_HOME
 
-__version__ = '3.0.2'
+__version__ = '3.0.3'
 _logo = ""
 _references = ["Turonova2017"]
 
