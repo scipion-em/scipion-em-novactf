@@ -265,6 +265,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         imodPlugin.runImod(self, 'trimvol', argsTrimvol % paramsTrimvol)
 
     def createOutputStep(self, tsObjId):
+
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
 
         tsId = ts.getTsId()
@@ -341,8 +342,15 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         """ This method return the average angles step from a series. """
 
         angleStepAverage = 0
-        for i in range(1, ts.getSize()):
-            angleStepAverage += abs(ts[i].getTiltAngle() - ts[i + 1].getTiltAngle())
+        # This was causing "recursive use of cursor not allowed" error.
+        # for i in range(1, ts.getSize()):
+        #     angleStepAverage += abs(ts[i].getTiltAngle() - ts[i + 1].getTiltAngle())
+        angles = []
+        for ti in ts:
+            angles.append(ti.getTiltAngle())
+
+        for i in range(0, len(angles)-1):
+            angleStepAverage += abs(angles[i] - angles[i + 1])
 
         angleStepAverage /= ts.getSize() - 1
 
