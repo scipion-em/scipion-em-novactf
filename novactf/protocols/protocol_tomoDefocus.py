@@ -180,12 +180,15 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         firstItem = ts.getFirstItem()
 
+        ih = ImageHandler()
+        xDim, yDim, _, _ = ih.getDimensions(firstItem.getFileName()+":mrc")
+
         defocusFilePath = os.path.join(extraPrefix, firstItem.parseFileName(extension=".defocus"))
 
         paramsDefocus = {
             'Algorithm': "defocus",
             'InputProjections': firstItem.getLocation()[1],
-            'FullImage': str(firstItem.getDim()[0]) + "," + str(firstItem.getDim()[1]),
+            'FullImage': str(xDim) + "," + str(yDim),
             'Thickness': self.tomoThickness.get(),
             'TiltFile': os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt")),
             'Shift': "0.0," + str(self.tomoShift.get()),
