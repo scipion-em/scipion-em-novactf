@@ -295,9 +295,14 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         # Set tomogram origin
         origin = Transform()
         sr = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate()
-        origin.setShifts(firstItem.getXDim() / -2. * sr,
-                         firstItem.getYDim() / -2. * sr,
+
+        ih = ImageHandler()
+        xDim, yDim, _, _ = ih.getDimensions(firstItem.getFileName()+":mrc")
+
+        origin.setShifts(xDim / -2. * sr,
+                         yDim / -2. * sr,
                          self.protTomoCtfDefocus.get().tomoThickness.get() / -2 * sr)
+
         newTomogram.setOrigin(origin)
 
         # Set tomogram acquisition
