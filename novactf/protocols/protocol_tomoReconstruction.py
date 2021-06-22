@@ -225,6 +225,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         tltFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt"))
 
+        ih = ImageHandler()
+        xDim, yDim, _, _ = ih.getDimensions(firstItem.getFileName()+":mrc")
+
         params3dctf = {
             'Algorithm': "3dctf",
             'InputProjections': os.path.join(tmpPrefix, firstItem.parseFileName(suffix="_flip_filter",
@@ -232,7 +235,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             'OutputFile': outputFilePathFlipped,
             'TiltFile': tltFilePath,
             'Thickness': self.protTomoCtfDefocus.get().tomoThickness.get(),
-            'FullImage': str(firstItem.getDim()[0]) + "," + str(firstItem.getDim()[1]),
+            'FullImage': str(xDim) + "," + str(yDim),
             'Shift': "0.0," + str(self.protTomoCtfDefocus.get().tomoShift.get()),
             'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.protTomoCtfDefocus.get().defocusStep.get()
