@@ -114,12 +114,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         path.makePath(tmpPrefix)
         path.makePath(extraPrefix)
 
-        print(ti.getDim())
-
         """Apply the transformation form the input tilt-series"""
         outputTsFileName = os.path.join(tmpPrefix, ti.parseFileName())
 
-        print(outputTsFileName)
         with self._lock:
             ts.applyTransform(outputTsFileName)
             """Generate angle file"""
