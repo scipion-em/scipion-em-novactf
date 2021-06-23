@@ -39,6 +39,7 @@ from tomo.objects import Tomogram, TomoAcquisition
 from novactf import Plugin
 from novactf.protocols import ProtNovaCtfTomoDefocus
 from imod import Plugin as imodPlugin
+from pwem.emlib.image import ImageHandler
 
 
 class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
