@@ -140,7 +140,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         # CTF correction step
         paramsCtfCorrection = {
             'Algorithm': "ctfCorrection",
-            'InputProjections': os.path.join(tmpPrefix, ti.parseFileName()),
+            'InputProjections': os.path.join(tmpPrefix, ti.parseFileName(extension=".mrc")),
             'OutputFile': outputFilePath + str(counter),
             'DefocusFile': defocusFilePath + str(counter),
             'TiltFile': tltFilePath,
