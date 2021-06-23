@@ -33,6 +33,7 @@ from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pyworkflow.object import Integer, List
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
+from pwem.emlib.image import ImageHandler
 from novactf import Plugin
 from imod import utils as imodUtils
 
