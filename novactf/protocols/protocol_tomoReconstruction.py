@@ -116,7 +116,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         path.makePath(extraPrefix)
 
         """Apply the transformation form the input tilt-series"""
-        outputTsFileName = os.path.join(tmpPrefix, ti.parseFileName())
+        outputTsFileName = os.path.join(tmpPrefix, ti.parseFileName(extension=".mrc"))
 
         with self._lock:
             ts.applyTransform(outputTsFileName)
