@@ -153,9 +153,10 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
-        ctfTomoSeries = self.inputSetOfCtfTomoSeries.get()[tsObjId]
-
         tsId = ts.getTsId()
+
+        ctfTomoSeries = self.getCtfTomoSeriesFromTsId(self.inputSetOfCtfTomoSeries.get(), tsId)
+
         tmpPrefix = self._getTmpPath(tsId)
         extraPrefix = self._getExtraPath(tsId)
 
@@ -252,6 +253,11 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
+    def getCtfTomoSeriesFromTsId(self, setOfCtfTomoSeries, tsId):
+        for ctfTomoSeries in self.inputSetOfCtfTomoSeries.get():
+            if tsId == ctfTomoSeries.getTsId():
+                return ctfTomoSeries
+
     def getCorrectionType(self):
         if self.correctionType.get() == 0:
             correctionType = "phaseflip"
