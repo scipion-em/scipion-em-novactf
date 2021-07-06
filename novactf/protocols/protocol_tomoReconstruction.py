@@ -39,6 +39,7 @@ from tomo.objects import Tomogram, TomoAcquisition
 from novactf import Plugin
 from novactf.protocols import ProtNovaCtfTomoDefocus
 from imod import Plugin as imodPlugin
+from pwem.emlib.image import ImageHandler
 
 
 class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
@@ -114,12 +115,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         path.makePath(tmpPrefix)
         path.makePath(extraPrefix)
 
-        print(ti.getDim())
-
         """Apply the transformation form the input tilt-series"""
-        outputTsFileName = os.path.join(tmpPrefix, ti.parseFileName())
+        outputTsFileName = os.path.join(tmpPrefix, ti.parseFileName(extension=".st"))
 
-        print(outputTsFileName)
         with self._lock:
             ts.applyTransform(outputTsFileName)
             """Generate angle file"""
@@ -142,7 +140,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         # CTF correction step
         paramsCtfCorrection = {
             'Algorithm': "ctfCorrection",
-            'InputProjections': os.path.join(tmpPrefix, ti.parseFileName()),
+            'InputProjections': os.path.join(tmpPrefix, ti.parseFileName(extension=".st")),
             'OutputFile': outputFilePath + str(counter),
             'DefocusFile': defocusFilePath + str(counter),
             'TiltFile': tltFilePath,
@@ -228,6 +226,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         tltFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt"))
 
+        ih = ImageHandler()
+        xDim, yDim, _, _ = ih.getDimensions(firstItem.getFileName()+":mrc")
+
         params3dctf = {
             'Algorithm': "3dctf",
             'InputProjections': os.path.join(tmpPrefix, firstItem.parseFileName(suffix="_flip_filter",
@@ -235,7 +236,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             'OutputFile': outputFilePathFlipped,
             'TiltFile': tltFilePath,
             'Thickness': self.protTomoCtfDefocus.get().tomoThickness.get(),
-            'FullImage': str(firstItem.getDim()[0]) + "," + str(firstItem.getDim()[1]),
+            'FullImage': str(xDim) + "," + str(yDim),
             'Shift': "0.0," + str(self.protTomoCtfDefocus.get().tomoShift.get()),
             'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.protTomoCtfDefocus.get().defocusStep.get()
@@ -295,9 +296,14 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         # Set tomogram origin
         origin = Transform()
         sr = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate()
-        origin.setShifts(firstItem.getXDim() / -2. * sr,
-                         firstItem.getYDim() / -2. * sr,
+
+        ih = ImageHandler()
+        xDim, yDim, _, _ = ih.getDimensions(firstItem.getFileName()+":mrc")
+
+        origin.setShifts(xDim / -2. * sr,
+                         yDim / -2. * sr,
                          self.protTomoCtfDefocus.get().tomoThickness.get() / -2 * sr)
+
         newTomogram.setOrigin(origin)
 
         # Set tomogram acquisition
