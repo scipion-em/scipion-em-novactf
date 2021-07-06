@@ -39,6 +39,7 @@ from tomo.objects import Tomogram, TomoAcquisition
 from novactf import Plugin
 from novactf.protocols import ProtNovaCtfTomoDefocus
 from imod import Plugin as imodPlugin
+from pwem.emlib.image import ImageHandler
 
 
 class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
@@ -115,7 +116,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         path.makePath(extraPrefix)
 
         """Apply the transformation form the input tilt-series"""
-        outputTsFileName = os.path.join(tmpPrefix, ti.parseFileName())
+        outputTsFileName = os.path.join(tmpPrefix, ti.parseFileName(extension=".st"))
 
         with self._lock:
             ts.applyTransform(outputTsFileName)
@@ -139,7 +140,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         # CTF correction step
         paramsCtfCorrection = {
             'Algorithm': "ctfCorrection",
-            'InputProjections': os.path.join(tmpPrefix, ti.parseFileName()),
+            'InputProjections': os.path.join(tmpPrefix, ti.parseFileName(extension=".st")),
             'OutputFile': outputFilePath + str(counter),
             'DefocusFile': defocusFilePath + str(counter),
             'TiltFile': tltFilePath,

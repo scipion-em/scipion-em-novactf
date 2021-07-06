@@ -33,6 +33,7 @@ from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pyworkflow.object import Integer, List
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
+from pwem.emlib.image import ImageHandler
 from novactf import Plugin
 from imod import utils as imodUtils
 
@@ -152,9 +153,10 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):
         ts = self.inputSetOfTiltSeries.get()[tsObjId]
-        ctfTomoSeries = self.inputSetOfCtfTomoSeries.get()[tsObjId]
-
         tsId = ts.getTsId()
+
+        ctfTomoSeries = self.getCtfTomoSeriesFromTsId(self.inputSetOfCtfTomoSeries.get(), tsId)
+
         tmpPrefix = self._getTmpPath(tsId)
         extraPrefix = self._getExtraPath(tsId)
 
@@ -251,6 +253,11 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         self._store()
 
     # --------------------------- UTILS functions ----------------------------
+    def getCtfTomoSeriesFromTsId(self, setOfCtfTomoSeries, tsId):
+        for ctfTomoSeries in self.inputSetOfCtfTomoSeries.get():
+            if tsId == ctfTomoSeries.getTsId():
+                return ctfTomoSeries
+
     def getCorrectionType(self):
         if self.correctionType.get() == 0:
             correctionType = "phaseflip"
