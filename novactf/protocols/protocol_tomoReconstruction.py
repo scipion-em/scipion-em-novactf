@@ -219,10 +219,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         outputFileNameFlip = firstItem.parseFileName(suffix="_flip", extension=".mrc")
         outputFileName = firstItem.parseFileName(extension=".mrc")
 
-        print("*** otuput file name")
-        print(outputFileNameFlip)
         outputFilePathFlipped = os.path.join(tmpPrefix, outputFileNameFlip)
-        print(outputFilePathFlipped)
 
         tltFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt"))
 
