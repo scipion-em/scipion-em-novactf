@@ -219,10 +219,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         outputFileNameFlip = firstItem.parseFileName(suffix="_flip", extension=".mrc")
         outputFileName = firstItem.parseFileName(extension=".mrc")
 
-        print("*** otuput file name")
-        print(outputFileNameFlip)
         outputFilePathFlipped = os.path.join(tmpPrefix, outputFileNameFlip)
-        print(outputFilePathFlipped)
 
         tltFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt"))
 
@@ -285,6 +282,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         newTomogram = Tomogram()
         newTomogram.setLocation(os.path.join(extraPrefix, firstItem.parseFileName(extension=".mrc")))
+        newTomogram.setTsId(tsId)
 
         if not os.path.exists(newTomogram.getFileName()):
             raise PyworkflowException("%s does not exist."
