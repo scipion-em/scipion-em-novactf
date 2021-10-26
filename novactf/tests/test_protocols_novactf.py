@@ -40,7 +40,7 @@ class TestNovaCtfBase(BaseTest):
     @classmethod
     def _runImportTiltSeries(cls, filesPath, pattern, voltage, magnification, sphericalAberration, amplitudeContrast,
                              samplingRate, doseInitial, dosePerFrame, anglesFrom=0, minAngle=0.0, maxAngle=0.0,
-                             stepAngle=1.0):
+                             stepAngle=1.0, tiltAxisAngle=87.2):
         cls.protImportTS = cls.newProtocol(tomo.protocols.ProtImportTs,
                                            filesPath=filesPath,
                                            filesPattern=pattern,
@@ -54,7 +54,8 @@ class TestNovaCtfBase(BaseTest):
                                            dosePerFrame=dosePerFrame,
                                            minAngle=minAngle,
                                            maxAngle=maxAngle,
-                                           stepAngle=stepAngle)
+                                           stepAngle=stepAngle,
+                                           tiltAxisAngle=tiltAxisAngle)
 
         cls.launchProtocol(cls.protImportTS)
 
