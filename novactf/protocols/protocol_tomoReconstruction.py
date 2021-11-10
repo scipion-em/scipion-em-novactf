@@ -209,12 +209,14 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         Plugin.runNovactf(self, 'novaCTF', argsFilterProjections % paramsFilterProjections)
 
     def computeReconstructionStep(self, tsObjId):
-        ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+        with self._lock:
+            ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+            firstItem = ts.getFirstItem()
+
         tsId = ts.getTsId()
+
         extraPrefix = self._getExtraPath(tsId)
         tmpPrefix = self._getTmpPath(tsId)
-
-        firstItem = ts.getFirstItem()
 
         outputFileNameFlip = firstItem.parseFileName(suffix="_flip", extension=".mrc")
         outputFileName = firstItem.parseFileName(extension=".mrc")
@@ -263,7 +265,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         imodPlugin.runImod(self, 'trimvol', argsTrimvol % paramsTrimvol)
 
     def createOutputStep(self, tsObjId):
-
         ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
 
         tsId = ts.getTsId()
