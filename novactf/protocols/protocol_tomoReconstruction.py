@@ -265,15 +265,15 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         imodPlugin.runImod(self, 'trimvol', argsTrimvol % paramsTrimvol)
 
     def createOutputStep(self, tsObjId):
-        ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+        with self._lock:
+            ts = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()[tsObjId]
+            firstItem = ts.getFirstItem()
 
         tsId = ts.getTsId()
         angleMax = ts[ts.getSize()].getTiltAngle()
         angleStepAverage = self.getAngleStepFromSeries(ts)
 
         extraPrefix = self._getExtraPath(tsId)
-
-        firstItem = ts.getFirstItem().clone()
 
         """Remove intermediate files. Necessary for big sets of tilt-series"""
         # path.cleanPath(self._getTmpPath(tsId))
