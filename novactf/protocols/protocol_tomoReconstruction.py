@@ -276,7 +276,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         extraPrefix = self._getExtraPath(tsId)
 
         """Remove intermediate files. Necessary for big sets of tilt-series"""
-        # path.cleanPath(self._getTmpPath(tsId))
+        path.cleanPath(self._getTmpPath(tsId))
 
         """Generate output set"""
         outputSetOfTomograms = self.getOutputSetOfTomograms()
