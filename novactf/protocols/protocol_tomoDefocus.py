@@ -137,6 +137,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
+        self.numberOfIntermediateStacks = List([])
 
         for ts in self.inputSetOfTiltSeries.get():
             self._insertFunctionStep(self.convertInputStep,
