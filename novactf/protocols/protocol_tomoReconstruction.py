@@ -141,7 +141,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                 argsAlignment = "-input %(input)s " \
                                 "-output %(output)s " \
                                 "-xform %(xform)s " \
-
+ \
                 rotationAngleAvg = imodUtils.calculateRotationAngleFromTM(ts)
 
                 # Check if rotation angle is greater than 45º. If so, swap x and y dimensions to adapt output image
@@ -212,7 +212,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         paramsClip = {
             'inputFilePath': os.path.join(tmpPrefix, ti.parseFileName(extension=".st_" + str(counter))),
             'outputFilePath': os.path.join(tmpPrefix, ti.parseFileName(suffix="_flip",
-                                                                                      extension=".st_" + str(counter))),
+                                                                       extension=".st_" + str(counter))),
         }
 
         argsClip = "flipyz " \
@@ -266,7 +266,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         params3dctf = {
             'Algorithm': "3dctf",
             'InputProjections': os.path.join(tmpPrefix, firstItem.parseFileName(suffix="_flip_filter",
-                                                                                        extension=".st")),
+                                                                                extension=".st")),
             'OutputFile': outputFilePathFlipped,
             'TiltFile': tltFilePath,
             'Thickness': self.protTomoCtfDefocus.get().tomoThickness.get(),
@@ -302,7 +302,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             })
 
             args3dctf += "-FULLIMAGE %(FullImage)s "
-
 
         Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
 
@@ -397,7 +396,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         for ti in ts:
             angles.append(ti.getTiltAngle())
 
-        for i in range(0, len(angles)-1):
+        for i in range(0, len(angles) - 1):
             angleStepAverage += abs(angles[i] - angles[i + 1])
 
         angleStepAverage /= ts.getSize() - 1
