@@ -153,7 +153,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
                     argsAlignment += "-size %(size)s "
 
-                Plugin.runImod(self, 'newstack', argsAlignment % paramsAlignment)
+                imodPlugin.runImod(self, 'newstack', argsAlignment % paramsAlignment)
 
             else:
                 path.createLink(firstItem.getLocation()[1], outputTsFileName)
