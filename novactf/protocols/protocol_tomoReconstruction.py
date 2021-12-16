@@ -263,9 +263,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         tltFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt"))
 
-        ih = ImageHandler()
-        xDim, yDim, _, _ = ih.getDimensions(firstItem.getFileName()+":mrc")
-
         params3dctf = {
             'Algorithm': "3dctf",
             'InputProjections': os.path.join(tmpPrefix, firstItem.parseFileName(suffix="_flip_filter",
@@ -273,7 +270,6 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             'OutputFile': outputFilePathFlipped,
             'TiltFile': tltFilePath,
             'Thickness': self.protTomoCtfDefocus.get().tomoThickness.get(),
-            'FullImage': str(xDim) + "," + str(yDim),
             'Shift': "0.0," + str(self.protTomoCtfDefocus.get().tomoShift.get()),
             'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.protTomoCtfDefocus.get().defocusStep.get()
@@ -284,10 +280,21 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                     "-OutputFile %(OutputFile)s " \
                     "-TILTFILE %(TiltFile)s " \
                     "-THICKNESS %(Thickness)d " \
-                    "-FULLIMAGE %(FullImage)s " \
                     "-SHIFT %(Shift)s " \
                     "-PixelSize %(PixelSize)f " \
                     "-DefocusStep %(DefocusStep)d"
+
+        # Check if rotation angle is greater than 45º. If so, swap x and y dimensions to adapt output image
+        # sizes to the final sample disposition.
+
+        rotationAngleAvg = imodUtils.calculateRotationAngleFromTM(ts)
+
+        if rotationAngleAvg > 45 or rotationAngleAvg < -45:
+            params3dctf.update({
+                'FullImage': "%d,%d" % (firstItem.getYDim(), firstItem.getXDim())
+            })
+
+            args3dctf += "-FULLIMAGE %(FullImage)s "
 
         Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
 
