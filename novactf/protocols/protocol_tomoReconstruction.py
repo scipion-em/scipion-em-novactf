@@ -296,6 +296,14 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
             args3dctf += "-FULLIMAGE %(FullImage)s "
 
+        else:
+            params3dctf.update({
+                'FullImage': "%d,%d" % (firstItem.getXDim(), firstItem.getYDim())
+            })
+
+            args3dctf += "-FULLIMAGE %(FullImage)s "
+
+
         Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
 
         paramsTrimvol = {
