@@ -39,6 +39,7 @@ from tomo.objects import Tomogram, TomoAcquisition
 from novactf import Plugin
 from novactf.protocols import ProtNovaCtfTomoDefocus
 from imod import Plugin as imodPlugin
+import imod.utils as imodUtils
 from pwem.emlib.image import ImageHandler
 
 
@@ -119,7 +120,44 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         outputTsFileName = os.path.join(tmpPrefix, ti.parseFileName(extension=".st"))
 
         with self._lock:
-            ts.applyTransform(outputTsFileName)
+            """ Use Xmipp interpolation algorithm (via Scipion)  """
+            # ts.applyTransform(outputTsFileName)
+
+            """ Use Imod interpolation algorithm (via newstack) """
+            firstItem = ts.getFirstItem()
+
+            if firstItem.hasTransform():
+                # Generate transformation matrices file
+                outputTmFileName = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".xf"))
+                imodUtils.formatTransformFile(ts, outputTmFileName)
+
+                # Apply interpolation
+                paramsAlignment = {
+                    'input': firstItem.getFileName(),
+                    'output': outputTsFileName,
+                    'xform': os.path.join(tmpPrefix, firstItem.parseFileName(extension=".xf")),
+                }
+
+                argsAlignment = "-input %(input)s " \
+                                "-output %(output)s " \
+                                "-xform %(xform)s " \
+
+                rotationAngleAvg = imodUtils.calculateRotationAngleFromTM(ts)
+
+                # Check if rotation angle is greater than 45º. If so, swap x and y dimensions to adapt output image
+                # sizes to the final sample disposition.
+                if rotationAngleAvg > 45 or rotationAngleAvg < -45:
+                    paramsAlignment.update({
+                        'size': "%d,%d" % (firstItem.getYDim(), firstItem.getXDim())
+                    })
+
+                    argsAlignment += "-size %(size)s "
+
+                Plugin.runImod(self, 'newstack', argsAlignment % paramsAlignment)
+
+            else:
+                path.createLink(firstItem.getLocation()[1], outputTsFileName)
+
             """Generate angle file"""
             outputTltFileName = os.path.join(tmpPrefix, ti.parseFileName(extension=".tlt"))
             ts.generateTltFile(outputTltFileName)
