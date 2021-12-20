@@ -331,7 +331,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         path.cleanPath(self._getTmpPath(tsId))
 
         """Generate output set"""
-        outputSetOfTomograms = self.getOutputSetOfTomograms()
+        self.getOutputSetOfTomograms()
 
         newTomogram = Tomogram()
         newTomogram.setLocation(os.path.join(extraPrefix, firstItem.parseFileName(extension=".mrc")))
@@ -355,8 +355,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         acquisition.setStep(angleStepAverage)
         newTomogram.setAcquisition(acquisition)
 
-        outputSetOfTomograms.append(newTomogram)
-        outputSetOfTomograms.write()
+        self.outputSetOfTomogramsoutputSetOfTomograms.append(newTomogram)
+        self.outputSetOfTomogramsoutputSetOfTomograms.write()
         self._store()
 
     def closeOutputSetsStep(self):
