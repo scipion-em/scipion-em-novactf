@@ -355,8 +355,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         acquisition.setStep(angleStepAverage)
         newTomogram.setAcquisition(acquisition)
 
-        self.outputSetOfTomogramsoutputSetOfTomograms.append(newTomogram)
-        self.outputSetOfTomogramsoutputSetOfTomograms.write()
+        self.outputSetOfTomograms.append(newTomogram)
+        self.outputSetOfTomograms.write()
         self._store()
 
     def closeOutputSetsStep(self):
