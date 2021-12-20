@@ -336,6 +336,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         newTomogram = Tomogram()
         newTomogram.setLocation(os.path.join(extraPrefix, firstItem.parseFileName(extension=".mrc")))
         newTomogram.setTsId(tsId)
+        newTomogram.setSamplingRate(ts.getSamplingRate())
 
         if not os.path.exists(newTomogram.getFileName()):
             raise PyworkflowException("%s does not exist."
