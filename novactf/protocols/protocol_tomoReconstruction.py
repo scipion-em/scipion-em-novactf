@@ -282,7 +282,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                     "-THICKNESS %(Thickness)d " \
                     "-SHIFT %(Shift)s " \
                     "-PixelSize %(PixelSize)f " \
-                    "-DefocusStep %(DefocusStep)d"
+                    "-DefocusStep %(DefocusStep)d "
 
         # Check if rotation angle is greater than 45º. If so, swap x and y dimensions to adapt output image
         # sizes to the final sample disposition.
