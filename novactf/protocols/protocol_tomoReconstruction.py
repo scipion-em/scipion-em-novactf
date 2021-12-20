@@ -140,8 +140,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
                 argsAlignment = "-input %(input)s " \
                                 "-output %(output)s " \
-                                "-xform %(xform)s " \
- \
+                                "-xform %(xform)s "
+
                 rotationAngleAvg = imodUtils.calculateRotationAngleFromTM(ts)
 
                 # Check if rotation angle is greater than 45º. If so, swap x and y dimensions to adapt output image
