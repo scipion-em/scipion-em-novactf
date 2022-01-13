@@ -39,6 +39,7 @@ from tomo.objects import Tomogram, TomoAcquisition
 from novactf import Plugin
 from novactf.protocols import ProtNovaCtfTomoDefocus
 from imod import Plugin as imodPlugin
+import imod.utils as imodUtils
 from pwem.emlib.image import ImageHandler
 
 
@@ -119,7 +120,44 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         outputTsFileName = os.path.join(tmpPrefix, ti.parseFileName(extension=".st"))
 
         with self._lock:
-            ts.applyTransform(outputTsFileName)
+            """ Use Xmipp interpolation algorithm (via Scipion)  """
+            # ts.applyTransform(outputTsFileName)
+
+            """ Use Imod interpolation algorithm (via newstack) """
+            firstItem = ts.getFirstItem()
+
+            if firstItem.hasTransform():
+                # Generate transformation matrices file
+                outputTmFileName = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".xf"))
+                imodUtils.formatTransformFile(ts, outputTmFileName)
+
+                # Apply interpolation
+                paramsAlignment = {
+                    'input': firstItem.getFileName(),
+                    'output': outputTsFileName,
+                    'xform': os.path.join(tmpPrefix, firstItem.parseFileName(extension=".xf")),
+                }
+
+                argsAlignment = "-input %(input)s " \
+                                "-output %(output)s " \
+                                "-xform %(xform)s "
+
+                rotationAngleAvg = imodUtils.calculateRotationAngleFromTM(ts)
+
+                # Check if rotation angle is greater than 45º. If so, swap x and y dimensions to adapt output image
+                # sizes to the final sample disposition.
+                if rotationAngleAvg > 45 or rotationAngleAvg < -45:
+                    paramsAlignment.update({
+                        'size': "%d,%d" % (firstItem.getYDim(), firstItem.getXDim())
+                    })
+
+                    argsAlignment += "-size %(size)s "
+
+                imodPlugin.runImod(self, 'newstack', argsAlignment % paramsAlignment)
+
+            else:
+                path.createLink(firstItem.getLocation()[1], outputTsFileName)
+
             """Generate angle file"""
             outputTltFileName = os.path.join(tmpPrefix, ti.parseFileName(extension=".tlt"))
             ts.generateTltFile(outputTltFileName)
@@ -174,7 +212,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         paramsClip = {
             'inputFilePath': os.path.join(tmpPrefix, ti.parseFileName(extension=".st_" + str(counter))),
             'outputFilePath': os.path.join(tmpPrefix, ti.parseFileName(suffix="_flip",
-                                                                                      extension=".st_" + str(counter))),
+                                                                       extension=".st_" + str(counter))),
         }
 
         argsClip = "flipyz " \
@@ -225,17 +263,13 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         tltFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt"))
 
-        ih = ImageHandler()
-        xDim, yDim, _, _ = ih.getDimensions(firstItem.getFileName()+":mrc")
-
         params3dctf = {
             'Algorithm': "3dctf",
             'InputProjections': os.path.join(tmpPrefix, firstItem.parseFileName(suffix="_flip_filter",
-                                                                                        extension=".st")),
+                                                                                extension=".st")),
             'OutputFile': outputFilePathFlipped,
             'TiltFile': tltFilePath,
             'Thickness': self.protTomoCtfDefocus.get().tomoThickness.get(),
-            'FullImage': str(xDim) + "," + str(yDim),
             'Shift': "0.0," + str(self.protTomoCtfDefocus.get().tomoShift.get()),
             'PixelSize': self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate() / 10,
             'DefocusStep': self.protTomoCtfDefocus.get().defocusStep.get()
@@ -246,10 +280,28 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                     "-OutputFile %(OutputFile)s " \
                     "-TILTFILE %(TiltFile)s " \
                     "-THICKNESS %(Thickness)d " \
-                    "-FULLIMAGE %(FullImage)s " \
                     "-SHIFT %(Shift)s " \
                     "-PixelSize %(PixelSize)f " \
-                    "-DefocusStep %(DefocusStep)d"
+                    "-DefocusStep %(DefocusStep)d "
+
+        # Check if rotation angle is greater than 45º. If so, swap x and y dimensions to adapt output image
+        # sizes to the final sample disposition.
+
+        rotationAngleAvg = imodUtils.calculateRotationAngleFromTM(ts)
+
+        if rotationAngleAvg > 45 or rotationAngleAvg < -45:
+            params3dctf.update({
+                'FullImage': "%d,%d" % (firstItem.getYDim(), firstItem.getXDim())
+            })
+
+            args3dctf += "-FULLIMAGE %(FullImage)s "
+
+        else:
+            params3dctf.update({
+                'FullImage': "%d,%d" % (firstItem.getXDim(), firstItem.getYDim())
+            })
+
+            args3dctf += "-FULLIMAGE %(FullImage)s "
 
         Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
 
@@ -279,11 +331,12 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         path.cleanPath(self._getTmpPath(tsId))
 
         """Generate output set"""
-        outputSetOfTomograms = self.getOutputSetOfTomograms()
+        self.getOutputSetOfTomograms()
 
         newTomogram = Tomogram()
         newTomogram.setLocation(os.path.join(extraPrefix, firstItem.parseFileName(extension=".mrc")))
         newTomogram.setTsId(tsId)
+        newTomogram.setSamplingRate(ts.getSamplingRate())
 
         if not os.path.exists(newTomogram.getFileName()):
             raise PyworkflowException("%s does not exist."
@@ -292,18 +345,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                       "\nobject tsId %s"
                                       % (newTomogram.getFileName(), tsObjId, tsId, firstItem.getTsId()))
 
-        # Set tomogram origin
-        origin = Transform()
-        sr = self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get().getSamplingRate()
-
-        ih = ImageHandler()
-        xDim, yDim, _, _ = ih.getDimensions(firstItem.getFileName()+":mrc")
-
-        origin.setShifts(xDim / -2. * sr,
-                         yDim / -2. * sr,
-                         self.protTomoCtfDefocus.get().tomoThickness.get() / -2 * sr)
-
-        newTomogram.setOrigin(origin)
+        # Set default tomogram origin
+        newTomogram.setOrigin(newOrigin=False)
 
         # Set tomogram acquisition
         acquisition = TomoAcquisition()
@@ -312,8 +355,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         acquisition.setStep(angleStepAverage)
         newTomogram.setAcquisition(acquisition)
 
-        outputSetOfTomograms.append(newTomogram)
-        outputSetOfTomograms.write()
+        self.outputSetOfTomograms.append(newTomogram)
+        self.outputSetOfTomograms.write()
         self._store()
 
     def closeOutputSetsStep(self):
@@ -354,7 +397,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         for ti in ts:
             angles.append(ti.getTiltAngle())
 
-        for i in range(0, len(angles)-1):
+        for i in range(0, len(angles) - 1):
             angleStepAverage += abs(angles[i] - angles[i + 1])
 
         angleStepAverage /= ts.getSize() - 1
