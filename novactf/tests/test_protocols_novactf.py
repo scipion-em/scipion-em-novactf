@@ -171,7 +171,7 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
 
         cls.protCTFReconstruction = cls._runCtfReconstruction(
             inputSetOfTiltSeries=cls.protImportTS.outputTiltSeries,
-            inputSetOfCtfTomoSeries=cls.protCTFEstimation.outputSetOfCTFTomoSeries,
+            inputSetOfCtfTomoSeries=cls.protCTFEstimation.CTFTomoSeries,
             tomoThickness=cls.thicknessTomo,
             tomoShift=0,
             defocusStep=15,
