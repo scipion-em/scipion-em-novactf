@@ -6,7 +6,7 @@
 # *
 # * This program is free software; you can redistribute it and/or modify
 # * it under the terms of the GNU General Public License as published by
-# * the Free Software Foundation; either version 2 of the License, or
+# * the Free Software Foundation; either version 3 of the License, or
 # * (at your option) any later version.
 # *
 # * This program is distributed in the hope that it will be useful,
@@ -25,6 +25,7 @@
 # **************************************************************************
 
 import os
+
 from pyworkflow import BETA
 import pyworkflow.protocol.params as params
 from pyworkflow.project import Manager
@@ -34,8 +35,9 @@ from pyworkflow.object import Integer, List
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
 from pwem.emlib.image import ImageHandler
-from novactf import Plugin
+
 from imod import utils as imodUtils
+from .. import Plugin
 
 
 class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
@@ -236,7 +238,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
     def triggerReconstructionProtocolStep(self):
         # Local import to avoid looping
-        from novactf.protocols import ProtNovaCtfTomoReconstruction
+        from . import ProtNovaCtfTomoReconstruction
 
         manager = Manager()
         project = manager.loadProject(self.getProject().getName())

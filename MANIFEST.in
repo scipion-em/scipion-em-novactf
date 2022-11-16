@@ -1,3 +1,11 @@
-include *.txt
-inlcude *.rst
+# Include the README
+include *.rst
+
+# Include the license file
 include LICENSE
+
+# Include the changelog
+include CHANGES.txt
+
+# Include conf file
+include novactf/protocols.conf

@@ -6,7 +6,7 @@
 # *
 # * This program is free software; you can redistribute it and/or modify
 # * it under the terms of the GNU General Public License as published by
-# * the Free Software Foundation; either version 2 of the License, or
+# * the Free Software Foundation; either version 3 of the License, or
 # * (at your option) any later version.
 # *
 # * This program is distributed in the hope that it will be useful,
@@ -26,7 +26,6 @@
 
 import os
 
-from pwem.objects import Transform
 from pyworkflow import BETA
 from pyworkflow.exceptions import PyworkflowException
 from pyworkflow.object import Set
@@ -36,11 +35,12 @@ from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
 from tomo.objects import Tomogram, TomoAcquisition
-from novactf import Plugin
-from novactf.protocols import ProtNovaCtfTomoDefocus
+
 from imod import Plugin as imodPlugin
 import imod.utils as imodUtils
-from pwem.emlib.image import ImageHandler
+
+from .. import Plugin
+from . import ProtNovaCtfTomoDefocus
 
 
 class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
@@ -387,7 +387,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     @staticmethod
     def getAngleStepFromSeries(ts):
-        """ This method return the average angles step from a series. """
+        """ This method return the average angle step from a series. """
 
         angleStepAverage = 0
         # This was causing "recursive use of cursor not allowed" error.
