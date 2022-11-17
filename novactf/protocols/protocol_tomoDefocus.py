@@ -170,11 +170,11 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         paramsDefocus = {
             'Algorithm': "defocus",
-            'InputProjections': firstItem.getLocation()[1],
+            'InputProjections': firstItem.getFileName(),
             'FullImage': str(xDim) + "," + str(yDim),
             'Thickness': self.tomoThickness.get(),
             'TiltFile': os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt")),
-            'CorrectionType': "phaseflip" if self.correctionType == 0 else "multiplication",
+            'CorrectionType': "phaseflip" if self.correctionType.get() == 0 else "multiplication",
             'DefocusFileFormat': "imod",
             'CorrectAstigmatism': self.correctAstigmatism.get(),
             'DefocusFile': defocusFilePath,

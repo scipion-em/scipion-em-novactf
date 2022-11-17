@@ -63,35 +63,13 @@ class TestNovaCtfBase(BaseTest):
         return cls.protImportTS
 
     @classmethod
-    def _runCTFEstimation(cls, inputSoTS, defocusTol, expectedDefocusOrigin, expectedDefocusValue,
-                          axisAngle, leftDefTol, rightDefTol, tileSize, angleStep, angleRange,
-                          startFreq, endFreq, extraZerosToFit, skipAstigmaticViews, searchAstigmatism,
-                          findAstigPhaseCutonToggle, phaseShiftAstigmatism, cutOnFrequencyAstigmatism,
-                          minimumViewsAstigmatism, minimumViewsPhaseShift, numberSectorsAstigmatism,
-                          maximumAstigmatism):
+    def _runCTFEstimation(cls, inputSoTS, expectedDefocusOrigin,
+                          expectedDefocusValue,searchAstigmatism):
         cls.protCTFEstimation = cls.newProtocol(imod.protocols.ProtImodAutomaticCtfEstimation,
                                                 inputSet=inputSoTS,
-                                                defocusTol=defocusTol,
                                                 expectedDefocusOrigin=expectedDefocusOrigin,
                                                 expectedDefocusValue=expectedDefocusValue,
-                                                axisAngle=axisAngle,
-                                                leftDefTol=leftDefTol,
-                                                rightDefTol=rightDefTol,
-                                                tileSize=tileSize,
-                                                angleStep=angleStep,
-                                                angleRange=angleRange,
-                                                startFreq=startFreq,
-                                                endFreq=endFreq,
-                                                extraZerosToFit=extraZerosToFit,
-                                                skipAstigmaticViews=skipAstigmaticViews,
-                                                searchAstigmatism=searchAstigmatism,
-                                                findAstigPhaseCutonToggle=findAstigPhaseCutonToggle,
-                                                phaseShiftAstigmatism=phaseShiftAstigmatism,
-                                                cutOnFrequencyAstigmatism=cutOnFrequencyAstigmatism,
-                                                minimumViewsAstigmatism=minimumViewsAstigmatism,
-                                                minimumViewsPhaseShift=minimumViewsPhaseShift,
-                                                numberSectorsAstigmatism=numberSectorsAstigmatism,
-                                                maximumAstigmatism=maximumAstigmatism)
+                                                searchAstigmatism=searchAstigmatism)
 
         cls.launchProtocol(cls.protCTFEstimation)
 
@@ -139,36 +117,18 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
 
         cls.protCTFEstimation = cls._runCTFEstimation(
             inputSoTS=cls.protImportTS.outputTiltSeries,
-            defocusTol=200.0,
             expectedDefocusOrigin=0,
             expectedDefocusValue=6000,
-            axisAngle=0.0,
-            leftDefTol=2000.0,
-            rightDefTol=2000.0,
-            tileSize=256,
-            angleStep=2.0,
-            angleRange=20.0,
-            startFreq=0.0,
-            endFreq=0.0,
-            extraZerosToFit=0.0,
-            skipAstigmaticViews=1,
-            searchAstigmatism=1,
-            findAstigPhaseCutonToggle=1,
-            phaseShiftAstigmatism=0,
-            cutOnFrequencyAstigmatism=0,
-            minimumViewsAstigmatism=3,
-            minimumViewsPhaseShift=1,
-            numberSectorsAstigmatism=36,
-            maximumAstigmatism=1.2)
+            searchAstigmatism=0)
 
         cls.protCTFCompute = cls._runComputeCtfArray(
             inputSetOfTiltSeries=cls.protImportTS.outputTiltSeries,
             inputSetOfCtfTomoSeries=cls.protCTFEstimation.CTFTomoSeries,
             tomoThickness=20,
             tomoShift=0,
-            defocusStep=15,
+            defocusStep=50,
             correctionType=0,
-            correctAstigmatism=1)
+            correctAstigmatism=0)
 
         cls.protReconstruct = cls.newProtocol(ProtNovaCtfTomoReconstruction,
                                               protTomoCtfDefocus=cls.protCTFCompute,
