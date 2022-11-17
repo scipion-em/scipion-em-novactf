@@ -23,12 +23,12 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # *****************************************************************************
+import os
 
-from pyworkflow.tests import *
-from pyworkflow.tests.test_utils import wait
+from pyworkflow.tests import setupTestProject, BaseTest, DataSet
 from pwem.emlib.image import ImageHandler
-import tomo
-import imod
+import tomo.protocols
+import imod.protocols
 
 from ..protocols import *
 
@@ -63,8 +63,8 @@ class TestNovaCtfBase(BaseTest):
         return cls.protImportTS
 
     @classmethod
-    def _runCTFEstimation(cls, inputSoTS, defocusTol, expectedDefocusOrigin, expectedDefocusValue, expectedDefocusFile,
-                          axisAngle, interactiveMode, leftDefTol, rightDefTol, tileSize, angleStep, angleRange,
+    def _runCTFEstimation(cls, inputSoTS, defocusTol, expectedDefocusOrigin, expectedDefocusValue,
+                          axisAngle, leftDefTol, rightDefTol, tileSize, angleStep, angleRange,
                           startFreq, endFreq, extraZerosToFit, skipAstigmaticViews, searchAstigmatism,
                           findAstigPhaseCutonToggle, phaseShiftAstigmatism, cutOnFrequencyAstigmatism,
                           minimumViewsAstigmatism, minimumViewsPhaseShift, numberSectorsAstigmatism,
@@ -74,9 +74,7 @@ class TestNovaCtfBase(BaseTest):
                                                 defocusTol=defocusTol,
                                                 expectedDefocusOrigin=expectedDefocusOrigin,
                                                 expectedDefocusValue=expectedDefocusValue,
-                                                expectedDefocusFile=expectedDefocusFile,
                                                 axisAngle=axisAngle,
-                                                interactiveMode=interactiveMode,
                                                 leftDefTol=leftDefTol,
                                                 rightDefTol=rightDefTol,
                                                 tileSize=tileSize,
@@ -100,9 +98,8 @@ class TestNovaCtfBase(BaseTest):
         return cls.protCTFEstimation
 
     @classmethod
-    def _runCtfReconstruction(cls, inputSetOfTiltSeries, inputSetOfCtfTomoSeries, tomoThickness, tomoShift,
-                              defocusStep, correctionType, correctAstigmatism, radialFirstParameter,
-                              radialSecondParameter):
+    def _runComputeCtfArray(cls, inputSetOfTiltSeries, inputSetOfCtfTomoSeries, tomoThickness, tomoShift,
+                            defocusStep, correctionType, correctAstigmatism):
         cls.protCTFReconstruction = cls.newProtocol(ProtNovaCtfTomoDefocus,
                                                     inputSetOfTiltSeries=inputSetOfTiltSeries,
                                                     inputSetOfCtfTomoSeries=inputSetOfCtfTomoSeries,
@@ -110,9 +107,7 @@ class TestNovaCtfBase(BaseTest):
                                                     tomoShift=tomoShift,
                                                     defocusStep=defocusStep,
                                                     correctionType=correctionType,
-                                                    correctAstigmatism=correctAstigmatism,
-                                                    radialFirstParameter=radialFirstParameter,
-                                                    radialSecondParameter=radialSecondParameter)
+                                                    correctAstigmatism=correctAstigmatism)
 
         cls.launchProtocol(cls.protCTFReconstruction)
 
@@ -127,10 +122,8 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
         cls.inputDataSet = DataSet.getDataSet('novaCtfTestData')
         cls.inputSoTS = cls.inputDataSet.getFile('tsCtf')
 
-        cls.thicknessTomo = 20.0
-
         cls.protImportTS = cls._runImportTiltSeries(
-            filesPath=os.path.split(cls.inputSoTS)[0],
+            filesPath=os.path.dirname(cls.inputSoTS),
             pattern="tomo1_bin4.mrc",
             anglesFrom=0,
             voltage=300,
@@ -149,9 +142,7 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
             defocusTol=200.0,
             expectedDefocusOrigin=0,
             expectedDefocusValue=6000,
-            expectedDefocusFile="",
             axisAngle=0.0,
-            interactiveMode=1,
             leftDefTol=2000.0,
             rightDefTol=2000.0,
             tileSize=256,
@@ -170,31 +161,27 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
             numberSectorsAstigmatism=36,
             maximumAstigmatism=1.2)
 
-        cls.protCTFReconstruction = cls._runCtfReconstruction(
+        cls.protCTFCompute = cls._runComputeCtfArray(
             inputSetOfTiltSeries=cls.protImportTS.outputTiltSeries,
             inputSetOfCtfTomoSeries=cls.protCTFEstimation.CTFTomoSeries,
-            tomoThickness=cls.thicknessTomo,
+            tomoThickness=20,
             tomoShift=0,
             defocusStep=15,
             correctionType=0,
-            correctAstigmatism=1,
-            radialFirstParameter=0.3,
-            radialSecondParameter=0.05)
+            correctAstigmatism=1)
 
-        wait(condition=lambda: not (cls.proj.getRuns() == 4 and cls.proj.getRuns()[3].isFinished()),
-             timeout=600)
+        cls.protReconstruct = cls.newProtocol(ProtNovaCtfTomoReconstruction,
+                                              protTomoCtfDefocus=cls.protCTFCompute,
+                                              applyAlignment=False)
+        cls.launchProtocol(cls.protReconstruct)
+
+        return cls.protReconstruct
 
     def test_tomoReconstructionOutput(self):
-        protTomoReconstruction = self.proj.getRuns()[3]
-        self.assertIsNotNone(protTomoReconstruction.outputSetOfTomograms)
+        self.assertIsNotNone(self.protReconstruct.outputSetOfTomograms)
+        self.assertTrue(self.protReconstruct.outputSetOfTomograms.getSize() == 1)
 
-    def test_tomoReconstructionOutputSize(self):
-        protTomoReconstruction = self.proj.getRuns()[3]
-        self.assertTrue(protTomoReconstruction.outputSetOfTomograms.getSize() == 1)
-
-    def test_tomoReconstructionOutputTomogramDimensions(self):
         ih = ImageHandler()
-        protTomoReconstruction = self.proj.getRuns()[3]
         self.assertTrue(
-            ih.getDimensions(protTomoReconstruction.outputSetOfTomograms.getFirstItem()) ==
-            (960, 928, self.thicknessTomo, 1))
+            ih.getDimensions(self.protReconstruct.outputSetOfTomograms.getFirstItem()) ==
+            (960, 928, 20, 1))
