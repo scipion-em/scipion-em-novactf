@@ -339,9 +339,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         rotationAngle = ts.getAcquisition().getTiltAxisAngle()
 
         if 45 < abs(rotationAngle) < 135:
-            params3dctf.update({
-                'FullImage': "%d,%d" % (firstItem.getYDim(), firstItem.getXDim())
-            })
+            params3dctf['FullImage'] = "%d,%d" % (firstItem.getYDim(), firstItem.getXDim())
 
         Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
 

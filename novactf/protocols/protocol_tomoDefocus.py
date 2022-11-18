@@ -115,7 +115,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Correct for astigmatism in reconstruction.')
 
-        form.addParallelSection(threads=8, mpi=1)
+        form.addParallelSection(threads=2, mpi=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -226,7 +226,9 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         if len(self.numberOfIntermediateStacks):
             summary.append(f"Input tilt-series: {self.getInputTs().getSize()}\n"
                            f"Defocus files generated for each tilt-series: "
-                           f"{self.numberOfIntermediateStacks[0]}")
+                           f"{self.numberOfIntermediateStacks[0]}\n\n"
+                           "Use this protocol as input for novaCTF - 3D CTF "
+                           "correction and reconstruction.")
         else:
             summary.append("Outputs are not ready yet.")
         return summary

@@ -39,19 +39,16 @@ class TestNovaCtfBase(BaseTest):
         setupTestProject(cls)
 
     @classmethod
-    def _runImportTiltSeries(cls, filesPath, pattern, voltage, magnification, sphericalAberration, amplitudeContrast,
-                             samplingRate, doseInitial, dosePerFrame, anglesFrom=0, minAngle=0.0, maxAngle=0.0,
-                             stepAngle=1.0, tiltAxisAngle=87.2):
+    def _runImportTiltSeries(cls, filesPath, pattern, voltage, magnification,
+                             samplingRate, dosePerFrame, anglesFrom=0, minAngle=0.0, maxAngle=0.0,
+                             stepAngle=1.0, tiltAxisAngle=0.0):
         cls.protImportTS = cls.newProtocol(tomo.protocols.ProtImportTs,
                                            filesPath=filesPath,
                                            filesPattern=pattern,
                                            voltage=voltage,
                                            anglesFrom=anglesFrom,
                                            magnification=magnification,
-                                           sphericalAberration=sphericalAberration,
-                                           amplitudeContrast=amplitudeContrast,
                                            samplingRate=samplingRate,
-                                           doseInitial=doseInitial,
                                            dosePerFrame=dosePerFrame,
                                            minAngle=minAngle,
                                            maxAngle=maxAngle,
@@ -63,12 +60,13 @@ class TestNovaCtfBase(BaseTest):
         return cls.protImportTS
 
     @classmethod
-    def _runCTFEstimation(cls, inputSoTS, expectedDefocusOrigin,
-                          expectedDefocusValue,searchAstigmatism):
+    def _runCTFEstimation(cls, inputSoTS, expectedDefocusOrigin, angleRange,
+                          expectedDefocusValue, searchAstigmatism):
         cls.protCTFEstimation = cls.newProtocol(imod.protocols.ProtImodAutomaticCtfEstimation,
                                                 inputSet=inputSoTS,
                                                 expectedDefocusOrigin=expectedDefocusOrigin,
                                                 expectedDefocusValue=expectedDefocusValue,
+                                                angleRange=angleRange,
                                                 searchAstigmatism=searchAstigmatism)
 
         cls.launchProtocol(cls.protCTFEstimation)
@@ -106,19 +104,18 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
             anglesFrom=0,
             voltage=300,
             magnification=50000,
-            sphericalAberration=2.7,
-            amplitudeContrast=0.07,
             samplingRate=8.8,
-            doseInitial=0,
             dosePerFrame=0.3,
             minAngle=-60.0,
             maxAngle=60.0,
-            stepAngle=3.0)
+            stepAngle=3.0,
+            tiltAxisAngle=2.8)
 
         cls.protCTFEstimation = cls._runCTFEstimation(
             inputSoTS=cls.protImportTS.outputTiltSeries,
             expectedDefocusOrigin=0,
             expectedDefocusValue=6000,
+            angleRange=20,
             searchAstigmatism=0)
 
         cls.protCTFCompute = cls._runComputeCtfArray(
