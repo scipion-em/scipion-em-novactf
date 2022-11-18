@@ -364,6 +364,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         with self._lock:
             ts = self.getInputTs()[tsObjId]
             firstItem = ts.getFirstItem()
+            acq = ts.getAcquisition()
 
         tsId = ts.getTsId()
         extraPrefix = self._getExtraPath(tsId)
@@ -379,12 +380,11 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
             # Set default tomogram origin
             newTomogram.setOrigin(newOrigin=None)
-            newTomogram.setAcquisition(ts.getAcquisition())
+            newTomogram.setAcquisition(acq)
 
             outputTomos.append(newTomogram)
-
-        outputTomos.write()
-        self._store()
+            outputTomos.write()
+            self._store()
 
     def closeOutputSetsStep(self):
         self.getOutputSetOfTomograms().setStreamState(Set.STREAM_CLOSED)
