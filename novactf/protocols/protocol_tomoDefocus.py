@@ -212,9 +212,11 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             validateMsgs.append("Input set of tilt-series and input set of CTFs "
                                 " must contain the same number of items.")
 
-        defFlag = self.inputSetOfCtfTomoSeries.get().getIMODDefocusFileFlag()
-        if defFlag in [0, 4] and self.correctAstigmatism.get() == 1:
-            validateMsgs.append("CTF estimation does not have astigmatism values.")
+        ctf = self.inputSetOfCtfTomoSeries.get().getFirstItem()
+        if hasattr(ctf, "_IMODDefocusFileFlag"):
+            defFlag = ctf.getIMODDefocusFileFlag()
+            if defFlag in [0, 4] and self.correctAstigmatism.get() == 1:
+                validateMsgs.append("CTF estimation does not have astigmatism values.")
 
         return validateMsgs
 
