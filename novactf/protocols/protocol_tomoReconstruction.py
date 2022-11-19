@@ -168,6 +168,12 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                          firstItem.parseFileName(extension=".tlt"))
         ts.generateTltFile(outputTltFileName)
 
+        if firstItem.hasTransform():
+            # Generate transformation matrices file
+            outputTmFileName = os.path.join(tmpPrefix,
+                                            firstItem.parseFileName(extension=".xf"))
+            imodUtils.formatTransformFile(ts, outputTmFileName)
+
     def processIntermediateStacksStep(self, tsObjId, counter):
 
         with self._lock:
@@ -220,17 +226,13 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         # Alignment step
         if self.applyAlignment and firstItem.hasTransform():
-            # Generate transformation matrices file
-            outputTmFileName = os.path.join(tmpPrefix,
-                                            firstItem.parseFileName(extension=".xf"))
-            imodUtils.formatTransformFile(ts, outputTmFileName)
-
             paramsAlignment = {
                 'input': currentFn,
                 'output': os.path.join(tmpPrefix,
                                        firstItem.parseFileName(suffix="_ali",
                                                                extension=".mrc_")) + str(counter),
-                'xform': outputTmFileName,
+                'xform': os.path.join(tmpPrefix,
+                                      firstItem.parseFileName(extension=".xf"))
             }
 
             argsAlignment = "-input %(input)s " \
