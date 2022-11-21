@@ -80,7 +80,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                       allowsNull=True,
                       condition='doEraseGold',
                       pointerClass='SetOfLandmarkModels',
-                      label='Input set of fiducial models')
+                      label='Input set of fiducial models',
+                      help='Set of fid. models with no gaps after alignment')
 
         form.addParam('goldDiam', params.IntParam,
                       condition='doEraseGold',
@@ -256,6 +257,44 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                      firstItem.parseFileName(suffix="_ali",
                                                              extension=".mrc_")) + str(counter)
 
+        # Erase gold step
+        if self.doEraseGold:
+            lm = self.inputSetOfLandmarkModels.get().getLandmarkModelFromTsId(tsId=tsId)
+
+            # apply alignment to fid. model
+            imodPlugin.runImod(self, 'xfmodel',
+                               f'-XformsToApply {outputTmFileName}'
+                               f' {lm.getModelName()} '
+                               f'{os.path.join(tmpPrefix, firstItem.parseFileName(suffix="_erase", extension=".fid"))}')
+
+            paramsCcderaser = {
+                'inputFile': currentFn,
+                'outputFile': os.path.join(tmpPrefix,
+                                           firstItem.parseFileName(suffix="_erase",
+                                                                   extension=".mrc_" + str(counter))),
+                'modelFile': os.path.join(tmpPrefix,
+                                          firstItem.parseFileName(suffix="_erase", extension=".fid")),
+                'betterRadius': self.goldDiam.get() / 2,
+                'polynomialOrder': 0,
+                'circleObjects': "/"
+            }
+
+            argsCcderaser = "-InputFile %(inputFile)s " \
+                            "-OutputFile %(outputFile)s " \
+                            "-ModelFile %(modelFile)s " \
+                            "-BetterRadius %(betterRadius)f " \
+                            "-PolynomialOrder %(polynomialOrder)d " \
+                            "-CircleObjects %(circleObjects)s " \
+                            "-MergePatches 1 " \
+                            "-ExcludeAdjacent " \
+                            "-SkipTurnedOffPoints 1 " \
+                            "-ExpandCircleIterations 3 "
+
+            imodPlugin.runImod(self, 'ccderaser', argsCcderaser % paramsCcderaser)
+            currentFn = os.path.join(tmpPrefix,
+                                     firstItem.parseFileName(suffix="_erase",
+                                                             extension=".mrc_" + str(counter)))
+
         # Flipping step (XYZ to XZY)
         paramsClip = {
             'inputFilePath': currentFn,
@@ -398,6 +437,9 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         if self.applyAlignment and not ts.getFirstItem().getFirstItem().hasTransform():
             validateMsg.append("Input tilt-series do not have alignment "
                                "information! You cannot apply alignment.")
+
+        if self.doEraseGold and not self.inputSetOfLandmarkModels.hasValue():
+            validateMsg.append("You have to provide input set of landmarks to erase gold.")
 
         return validateMsg
 

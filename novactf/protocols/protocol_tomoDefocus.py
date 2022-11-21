@@ -29,6 +29,7 @@ from glob import glob
 
 from pyworkflow import BETA
 import pyworkflow.protocol.params as params
+from pyworkflow.project import Manager
 import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pyworkflow.object import Integer, List
@@ -123,6 +124,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         for ts in self.getInputTs():
             self._insertFunctionStep(self.convertInputStep, ts.getObjId())
             self._insertFunctionStep(self.computeDefocusStep, ts.getObjId())
+            self._insertFunctionStep(self.triggerReconstructionProtocolStep)
 
     # --------------------------- STEPS functions -----------------------------
     def convertInputStep(self, tsObjId):
@@ -203,6 +205,20 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         self.numberOfIntermediateStacks.append(Integer(len(files)))
 
         self._store()
+
+    def triggerReconstructionProtocolStep(self):
+        # Local import to avoid looping
+        from . import ProtNovaCtfTomoReconstruction
+
+        manager = Manager()
+        project = manager.loadProject(self.getProject().getName())
+
+        protTomoReconstruction = ProtNovaCtfTomoReconstruction()
+        protTomoReconstruction.protTomoCtfDefocus.set(self)
+        protTomoReconstruction.numberOfThreads.set(self.numberOfThreads.get())
+        protTomoReconstruction.numberOfMpi.set(self.numberOfMpi.get())
+
+        project.scheduleProtocol(protTomoReconstruction)
 
     # --------------------------- INFO functions ------------------------------
     def _validate(self):
