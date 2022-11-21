@@ -124,7 +124,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         for ts in self.getInputTs():
             self._insertFunctionStep(self.convertInputStep, ts.getObjId())
             self._insertFunctionStep(self.computeDefocusStep, ts.getObjId())
-            self._insertFunctionStep(self.triggerReconstructionProtocolStep)
+        self._insertFunctionStep(self.triggerReconstructionProtocolStep)
 
     # --------------------------- STEPS functions -----------------------------
     def convertInputStep(self, tsObjId):
