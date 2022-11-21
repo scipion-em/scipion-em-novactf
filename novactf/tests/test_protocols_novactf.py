@@ -1,12 +1,12 @@
-# **************************************************************************
-# *
+# *****************************************************************************
+#
 # * Authors:     Federico P. de Isidro Gomez (fp.deisidro@cnb.csic.es) [1]
 # *
 # * [1] Centro Nacional de Biotecnologia, CSIC, Spain
 # *
 # * This program is free software; you can redistribute it and/or modify
 # * it under the terms of the GNU General Public License as published by
-# * the Free Software Foundation; either version 2 of the License, or
+# * the Free Software Foundation; either version 3 of the License, or
 # * (at your option) any later version.
 # *
 # * This program is distributed in the hope that it will be useful,
@@ -22,14 +22,15 @@
 # *  All comments concerning this program package may be sent to the
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
-# **************************************************************************
+# *****************************************************************************
 
 from pyworkflow.tests import *
 from pyworkflow.tests.test_utils import wait
-import imod
-from novactf.protocols import *
 from pwem.emlib.image import ImageHandler
 import tomo
+import imod
+
+from ..protocols import *
 
 
 class TestNovaCtfBase(BaseTest):
