@@ -166,9 +166,10 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         defocusFilePath = os.path.join(extraPrefix,
                                        firstItem.parseFileName(extension=".defocus"))
 
-        defocusShift = self.tomoThickness.get() / 2 + self.tomoShift.get()
-        with open(defocusFilePath.replace(".defocus", ".def_shift"), "w") as fn:
-            fn.write(f"{defocusShift}")
+        if self.tomoShift.get() > 0.01:
+            defocusShift = self.tomoThickness.get() / 2 + self.tomoShift.get()
+            with open(defocusFilePath.replace(".defocus", ".def_shift"), "w") as fn:
+                fn.write(f"{defocusShift}")
 
         paramsDefocus = {
             'Algorithm': "defocus",
@@ -196,8 +197,10 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                       "-CorrectAstigmatism %(CorrectAstigmatism)d " \
                       "-DefocusFile %(DefocusFile)s " \
                       "-PixelSize %(PixelSize)s " \
-                      "-DefocusStep %(DefocusStep)d " \
-                      "-DefocusShiftFile %(DefocusShiftFile)s "
+                      "-DefocusStep %(DefocusStep)d "
+
+        if self.tomoShift.get() > 0.01:
+            argsDefocus += "-DefocusShiftFile %(DefocusShiftFile)s "
 
         Plugin.runNovactf(self, 'novaCTF', argsDefocus % paramsDefocus)
 

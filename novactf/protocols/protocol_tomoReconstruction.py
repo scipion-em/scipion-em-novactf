@@ -136,7 +136,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                 intermediateStacksId.append(ctfId)
 
             reconstructionId = self._insertFunctionStep(self.computeReconstructionStep,
-                                                        ts.getObjId(),
+                                                        ts.getObjId(), nstacks[index].get(),
                                                         prerequisites=intermediateStacksId)
 
             createOutputId = self._insertFunctionStep(self.createOutputStep,
@@ -257,7 +257,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                                      firstItem.parseFileName(suffix="_ali",
                                                              extension=".mrc_")) + str(counter)
 
-        # Erase gold step
+        # Erase gold step  # TODO: fixme
         if self.doEraseGold:
             lm = self.inputSetOfLandmarkModels.get().getLandmarkModelFromTsId(tsId=tsId)
 
@@ -334,7 +334,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         Plugin.runNovactf(self, 'novaCTF', argsFilterProjections % paramsFilterProjections)
 
-    def computeReconstructionStep(self, tsObjId):
+    def computeReconstructionStep(self, tsObjId, nstacks):
         with self._lock:
             ts = self.getInputTs()[tsObjId]
             firstItem = ts.getFirstItem()
@@ -359,7 +359,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
             'Thickness': self.protTomoCtfDefocus.get().tomoThickness.get(),
             'Shift': "0.0," + str(self.protTomoCtfDefocus.get().tomoShift.get()),
             'PixelSize': self.getInputTs().getSamplingRate() / 10,
-            'DefocusStep': self.protTomoCtfDefocus.get().defocusStep.get()
+            'NumberOfStacks': nstacks
         }
 
         args3dctf = "-Algorithm %(Algorithm)s " \
@@ -370,7 +370,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                     "-THICKNESS %(Thickness)d " \
                     "-SHIFT %(Shift)s " \
                     "-PixelSize %(PixelSize)f " \
-                    "-DefocusStep %(DefocusStep)d " \
+                    "-NumberOfInputStacks %(NumberOfStacks)d " \
                     "-Use3DCTF 1 "
 
         # Check if rotation angle is greater than 45º.
