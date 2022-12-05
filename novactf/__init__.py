@@ -84,7 +84,7 @@ class Plugin(pwem.Plugin):
                        default=True)
 
     @classmethod
-    def runNovactf(cls, protocol, program, args, cwd=None):
+    def runNovactf(cls, protocol, program, args, **kwargs):
         """ Run NovaCTF command from a given protocol. """
         fullProgram = '%s/%s/%s' % (cls.getVar(NOVACTF_HOME), "novaCTF-master", program)
-        protocol.runJob(fullProgram, args, env=cls.getEnviron(), cwd=cwd)
+        protocol.runJob(fullProgram, args, env=cls.getEnviron(), **kwargs)

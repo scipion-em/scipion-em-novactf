@@ -63,7 +63,8 @@ master (8 Nov 2018)
 Protocols
 ---------
 
-* 3D ctf correction
+* compute defocus array
+* 3D CTF correction and reconstruction
 
 References
 ----------
