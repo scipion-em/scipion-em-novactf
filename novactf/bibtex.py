@@ -33,7 +33,7 @@ volume = "199",
 number = "1",
 pages = "187 - 195",
 year = "2017",
-doi = "http://doi.org/10.1016/j.jsb.2017.07.007",
+doi = "https://dx.doi.org/10.1016/j.jsb.2017.07.007",
 url = "http://www.sciencedirect.com/science/article/pii/S1047847717301272?via%3Dihub",
 author = "Beata Turonova and Florian K.M.Schur and William Wan and John A.G. Briggs"
 }
