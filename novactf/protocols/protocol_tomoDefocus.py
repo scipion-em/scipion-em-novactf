@@ -216,7 +216,8 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         manager = Manager()
         project = manager.loadProject(self.getProject().getName())
 
-        protTomoReconstruction = ProtNovaCtfTomoReconstruction()
+        applyAlignment = self.getInputTs().getFirstItem().getFirstItem().hasTransform()
+        protTomoReconstruction = ProtNovaCtfTomoReconstruction(applyAlignment=applyAlignment)
         protTomoReconstruction.protTomoCtfDefocus.set(self)
         protTomoReconstruction.numberOfThreads.set(self.numberOfThreads.get())
         protTomoReconstruction.numberOfMpi.set(self.numberOfMpi.get())

@@ -27,13 +27,14 @@
 import pwem
 
 
-__version__ = '3.1'
+__version__ = '3.1.1'
 _references = ["Turonova2017"]
 NOVACTF_HOME = 'NOVACTF_HOME'
 
 
 class Plugin(pwem.Plugin):
     _homeVar = NOVACTF_HOME
+    _url = "https://github.com/turonova/novaCTF"
 
     @classmethod
     def _defineVariables(cls):
