@@ -34,7 +34,7 @@ NOVACTF_HOME = 'NOVACTF_HOME'
 
 class Plugin(pwem.Plugin):
     _homeVar = NOVACTF_HOME
-    _url = "https://github.com/turonova/novaCTF"
+    _url = "https://github.com/scipion-em/scipion-em-novactf"
 
     @classmethod
     def _defineVariables(cls):
