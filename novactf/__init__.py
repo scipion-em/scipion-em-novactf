@@ -1,4 +1,4 @@
-# **************************************************************************
+# *****************************************************************************
 # *
 # * Authors:     Federico P. de Isidro Gomez (fp.deisidro@cnb.csic.es) [1]
 # *
@@ -6,7 +6,7 @@
 # *
 # * This program is free software; you can redistribute it and/or modify
 # * it under the terms of the GNU General Public License as published by
-# * the Free Software Foundation; either version 2 of the License, or
+# * the Free Software Foundation; either version 3 of the License, or
 # * (at your option) any later version.
 # *
 # * This program is distributed in the hope that it will be useful,
@@ -22,19 +22,19 @@
 # *  All comments concerning this program package may be sent to the
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
-# **************************************************************************
+# *****************************************************************************
 
 import pwem
 
-from .constants import NOVACTF_HOME
 
-__version__ = '3.0.5'
-_logo = ""
+__version__ = '3.1.1'
 _references = ["Turonova2017"]
+NOVACTF_HOME = 'NOVACTF_HOME'
 
 
 class Plugin(pwem.Plugin):
     _homeVar = NOVACTF_HOME
+    _url = "https://github.com/scipion-em/scipion-em-novactf"
 
     @classmethod
     def _defineVariables(cls):
@@ -85,7 +85,7 @@ class Plugin(pwem.Plugin):
                        default=True)
 
     @classmethod
-    def runNovactf(cls, protocol, program, args, cwd=None):
+    def runNovactf(cls, protocol, program, args, **kwargs):
         """ Run NovaCTF command from a given protocol. """
         fullProgram = '%s/%s/%s' % (cls.getVar(NOVACTF_HOME), "novaCTF-master", program)
-        protocol.runJob(fullProgram, args, env=cls.getEnviron(), cwd=cwd)
+        protocol.runJob(fullProgram, args, env=cls.getEnviron(), **kwargs)

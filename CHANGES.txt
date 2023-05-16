@@ -1,0 +1,9 @@
+3.1.1: fix reconstruction protocol trigger if no alignment exists
+3.1:
+- fix defocus shift: should be passed in a file for ctf correction, and as a param for reconstruction
+- add gold erasing option
+- stack is aligned after ctf correction
+- fix test tilt axis value
+- add astigmatism validation
+- do not create new TomoAcquisition object
+- use mrc extension for all files
