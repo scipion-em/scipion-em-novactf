@@ -144,11 +144,14 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         # Generate angle file
         angleFilePath = os.path.join(tmpPrefix,
                                      firstItem.parseFileName(extension=".tlt"))
+
+        self.info("Generating %s" % angleFilePath)
         ts.generateTltFile(angleFilePath)
 
         # Generate defocus file
         defocusFilePath = os.path.join(extraPrefix,
                                        firstItem.parseFileName(extension=".defocus"))
+
         imodUtils.generateDefocusIMODFileFromObject(ctfTomoSeries, defocusFilePath)
 
     def computeDefocusStep(self, tsObjId):
