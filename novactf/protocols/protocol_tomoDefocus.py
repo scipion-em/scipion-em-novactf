@@ -138,38 +138,37 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         tmpPrefix = self._getTmpPath(tsId)
         extraPrefix = self._getExtraPath(tsId)
 
+        # Create the folders for the tilt series
         path.makePath(tmpPrefix)
         path.makePath(extraPrefix)
 
-        firstItem = ts.getFirstItem()
-
         # Generate angle file
-        angleFilePath = os.path.join(tmpPrefix,
-                                     firstItem.parseFileName(extension=".tlt"))
+        angleFilePath = self.getTltFileName(tsId)
 
         self.info("Generating %s" % angleFilePath)
         ts.generateTltFile(angleFilePath)
 
         # Generate defocus file
-        defocusFilePath = os.path.join(extraPrefix,
-                                       firstItem.parseFileName(extension=".defocus"))
+        defocusFilePath = self.getDefocusFileName(tsId)
 
         imodUtils.generateDefocusIMODFileFromObject(ctfTomoSeries, defocusFilePath)
+
+    def getTltFileName(self, tsId):
+        return self._getTmpPath(tsId, tsId+".tlt")
+
+    def getDefocusFileName(self,tsId):
+        return self._getExtraPath(tsId, tsId + ".defocus")
 
     def computeDefocusStep(self, tsObjId):
         ts = self.getInputTs()[tsObjId]
         tsId = ts.getTsId()
-
-        tmpPrefix = self._getTmpPath(ts.getTsId())
-        extraPrefix = self._getExtraPath(tsId)
 
         firstItem = ts.getFirstItem()
 
         ih = ImageHandler()
         xDim, yDim, _, _ = ih.getDimensions(firstItem.getFileName() + ":mrc")
 
-        defocusFilePath = os.path.join(extraPrefix,
-                                       firstItem.parseFileName(extension=".defocus"))
+        defocusFilePath = self.getDefocusFileName(tsId)
 
         if self.tomoShift.get() > 0.01:
             defocusShift = self.tomoThickness.get() / 2 + self.tomoShift.get()
@@ -181,7 +180,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
             'InputProjections': firstItem.getFileName(),
             'FullImage': str(xDim) + "," + str(yDim),
             'Thickness': self.tomoThickness.get(),
-            'TiltFile': os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt")),
+            'TiltFile': self.getTltFileName(tsId),
             'CorrectionType': "phaseflip" if self.correctionType.get() == 0 else "multiplication",
             'DefocusFileFormat': "imod",
             'CorrectAstigmatism': self.correctAstigmatism.get(),
