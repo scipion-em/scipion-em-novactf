@@ -221,7 +221,10 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         project = manager.loadProject(self.getProject().getName())
 
         applyAlignment = self.getInputTs().getFirstItem().getFirstItem().hasTransform()
-        protTomoReconstruction = ProtNovaCtfTomoReconstruction(applyAlignment=applyAlignment)
+
+        label = self.getObjLabel() + " - REC."
+        protTomoReconstruction = ProtNovaCtfTomoReconstruction(applyAlignment=applyAlignment,
+                                                               objLabel=label)
         protTomoReconstruction.protTomoCtfDefocus.set(self)
         protTomoReconstruction.numberOfThreads.set(self.numberOfThreads.get())
         protTomoReconstruction.numberOfMpi.set(self.numberOfMpi.get())
