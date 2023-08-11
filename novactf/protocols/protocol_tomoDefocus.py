@@ -128,8 +128,10 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
     # --------------------------- STEPS functions -----------------------------
     def convertInputStep(self, tsObjId):
+
         ts = self.getInputTs()[tsObjId]
         tsId = ts.getTsId()
+        self.info("Generating tlt file and defocus file for %s (id %s)" % (tsId, tsObjId))
 
         ctfTomoSeries = self.getCtfTomoSeriesFromTsId(tsId)
 
