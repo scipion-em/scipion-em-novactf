@@ -183,10 +183,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         tsId = ts.getTsId()
         tmpPrefix = self._getTmpPath(tsId)
-        extraPrefixPreviousProt = self.protTomoCtfDefocus.get()._getExtraPath(tsId)
 
-        defocusFilePath = os.path.join(extraPrefixPreviousProt,
-                                       firstItem.parseFileName(extension=".defocus_"))
+        defocusFilePath = self.protTomoCtfDefocus.get().getDefocusFileName(tsId)
         tltFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt"))
         outputFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".mrc_"))
 
