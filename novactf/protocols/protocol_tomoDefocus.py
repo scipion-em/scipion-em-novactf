@@ -24,7 +24,6 @@
 # *
 # *****************************************************************************
 
-import os
 from glob import glob
 
 from pyworkflow import BETA
@@ -128,7 +127,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
     # --------------------------- STEPS functions -----------------------------
     def convertInputStep(self, tsObjId):
-
         ts = self.getInputTs()[tsObjId]
         tsId = ts.getTsId()
         self.info("Generating tlt file and defocus file for %s (id %s)" % (tsId, tsObjId))
@@ -154,7 +152,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         imodUtils.generateDefocusIMODFileFromObject(ctfTomoSeries, defocusFilePath)
 
     def getTltFileName(self, tsId):
-        return self._getTmpPath(tsId, tsId+".tlt")
+        return self._getTmpPath(tsId, tsId + ".tlt")
 
     def getDefocusFileName(self,tsId):
         return self._getExtraPath(tsId, tsId + ".defocus")
@@ -222,7 +220,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
         applyAlignment = self.getInputTs().getFirstItem().getFirstItem().hasTransform()
 
-        label = self.getObjLabel() + " - REC."
+        label = self.getObjLabel() + " - REC"
         protTomoReconstruction = ProtNovaCtfTomoReconstruction(applyAlignment=applyAlignment,
                                                                objLabel=label)
         protTomoReconstruction.protTomoCtfDefocus.set(self)
