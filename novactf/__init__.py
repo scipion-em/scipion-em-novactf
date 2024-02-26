@@ -27,7 +27,7 @@
 import pwem
 
 
-__version__ = '3.1.2'
+__version__ = '3.1.3'
 _references = ["Turonova2017"]
 NOVACTF_HOME = 'NOVACTF_HOME'
 

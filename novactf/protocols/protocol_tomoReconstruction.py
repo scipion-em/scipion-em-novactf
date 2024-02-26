@@ -25,6 +25,7 @@
 # **************************************************************************
 
 import os
+from enum import Enum
 
 from pyworkflow import BETA
 from pyworkflow.object import Set
@@ -33,12 +34,16 @@ import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
-from tomo.objects import Tomogram
+from tomo.objects import SetOfTomograms, Tomogram
 
 from imod import Plugin as imodPlugin
 import imod.utils as imodUtils
 
 from .. import Plugin
+
+
+class outputs(Enum):
+    Tomograms = SetOfTomograms
 
 
 class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
@@ -51,10 +56,10 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     _label = '3D CTF correction and reconstruction'
     _devStatus = BETA
+    _possibleOutputs = outputs
 
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
-        ProtTomoBase.__init__(self)
         self.stepsExecutionMode = STEPS_PARALLEL
 
     # -------------------------- DEFINE param functions -----------------------
@@ -115,7 +120,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                        default=0.05,
                        label='Gaussian fall-off')
 
-        form.addParallelSection(threads=4, mpi=1)
+        form.addParallelSection(threads=4)
 
     # -------------------------- INSERT steps functions ---------------------
     def _insertAllSteps(self):
@@ -123,24 +128,25 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         nstacks = self.protTomoCtfDefocus.get().numberOfIntermediateStacks
 
         for index, ts in enumerate(self.getInputTs()):
+            objId = ts.getObjId()
             convertInputId = self._insertFunctionStep(self.convertInputStep,
-                                                      ts.getObjId())
+                                                      objId)
 
             intermediateStacksId = []
 
             for counter in range(nstacks[index].get()):
                 ctfId = self._insertFunctionStep(self.processIntermediateStacksStep,
-                                                 ts.getObjId(),
+                                                 objId,
                                                  counter,
                                                  prerequisites=[convertInputId])
                 intermediateStacksId.append(ctfId)
 
             reconstructionId = self._insertFunctionStep(self.computeReconstructionStep,
-                                                        ts.getObjId(), nstacks[index].get(),
+                                                        objId, nstacks[index].get(),
                                                         prerequisites=intermediateStacksId)
 
             createOutputId = self._insertFunctionStep(self.createOutputStep,
-                                                      ts.getObjId(),
+                                                      objId,
                                                       prerequisites=[reconstructionId])
             allCreateOutputId.append(createOutputId)
 
@@ -444,10 +450,10 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     def _summary(self):
         summary = []
 
-        if hasattr(self, 'outputSetOfTomograms'):
+        if hasattr(self, outputs.Tomograms.name):
             summary.append(f"Input tilt-series: {self.getInputTs().getSize()}\n"
-                           f"CTF corrected tomos calculated: "
-                           f"{self.outputSetOfTomograms.getSize()}")
+                           "CTF corrected tomos calculated: "
+                           f"{getattr(self, outputs.Tomograms.name).getSize()}")
         else:
             summary.append("Outputs are not ready yet.")
 
@@ -456,8 +462,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     def _methods(self):
         methods = []
 
-        if hasattr(self, 'outputSetOfTomograms'):
-            methods.append(f"{self.outputSetOfTomograms.getSize()} "
+        if hasattr(self, outputs.Tomograms.name):
+            methods.append(f"{getattr(self, outputs.Tomograms.name).getSize()} "
                            "3D CTF corrected tomograms have been calculated "
                            "with NovaCTF.")
 
@@ -479,13 +485,14 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         return correctionType
 
     def getOutputSetOfTomograms(self):
-        if hasattr(self, "outputSetOfTomograms"):
-            self.outputSetOfTomograms.enableAppend()
+        outputName = outputs.Tomograms.name
+        if hasattr(self, outputName):
+            getattr(self, outputName).enableAppend()
         else:
             outputSetOfTomograms = self._createSetOfTomograms()
             outputSetOfTomograms.copyInfo(self.getInputTs())
             outputSetOfTomograms.setStreamState(Set.STREAM_OPEN)
-            self._defineOutputs(outputSetOfTomograms=outputSetOfTomograms)
+            self._defineOutputs(**{outputName: outputSetOfTomograms})
             self._defineSourceRelation(self.getInputTs(pointer=True), outputSetOfTomograms)
 
-        return self.outputSetOfTomograms
+        return getattr(self, outputName)
