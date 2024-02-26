@@ -450,10 +450,10 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     def _summary(self):
         summary = []
 
-        if hasattr(self, 'outputSetOfTomograms'):
+        if hasattr(self, outputs.Tomograms.name):
             summary.append(f"Input tilt-series: {self.getInputTs().getSize()}\n"
-                           f"CTF corrected tomos calculated: "
-                           f"{self.outputSetOfTomograms.getSize()}")
+                           "CTF corrected tomos calculated: "
+                           f"{getattr(self, outputs.Tomograms.name).getSize()}")
         else:
             summary.append("Outputs are not ready yet.")
 
@@ -462,8 +462,8 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     def _methods(self):
         methods = []
 
-        if hasattr(self, 'outputSetOfTomograms'):
-            methods.append(f"{self.outputSetOfTomograms.getSize()} "
+        if hasattr(self, outputs.Tomograms.name):
+            methods.append(f"{getattr(self, outputs.Tomograms.name).getSize()} "
                            "3D CTF corrected tomograms have been calculated "
                            "with NovaCTF.")
 
