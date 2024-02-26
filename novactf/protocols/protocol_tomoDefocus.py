@@ -115,7 +115,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
                       display=params.EnumParam.DISPLAY_HLIST,
                       help='Correct for astigmatism in reconstruction.')
 
-        form.addParallelSection(threads=2, mpi=1)
+        form.addParallelSection(threads=2)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -123,7 +123,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         for ts in self.getInputTs():
             self._insertFunctionStep(self.convertInputStep, ts.getObjId())
             self._insertFunctionStep(self.computeDefocusStep, ts.getObjId())
-        self._insertFunctionStep(self.triggerReconstructionProtocolStep)
 
     # --------------------------- STEPS functions -----------------------------
     def convertInputStep(self, tsObjId):
@@ -154,7 +153,7 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     def getTltFileName(self, tsId):
         return self._getTmpPath(tsId, tsId + ".tlt")
 
-    def getDefocusFileName(self,tsId):
+    def getDefocusFileName(self, tsId):
         return self._getExtraPath(tsId, tsId + ".defocus")
 
     def computeDefocusStep(self, tsObjId):
@@ -210,24 +209,6 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
         self.numberOfIntermediateStacks.append(Integer(len(files)))
 
         self._store()
-
-    def triggerReconstructionProtocolStep(self):
-        # Local import to avoid looping
-        from . import ProtNovaCtfTomoReconstruction
-
-        manager = Manager()
-        project = manager.loadProject(self.getProject().getName())
-
-        applyAlignment = self.getInputTs().getFirstItem().getFirstItem().hasTransform()
-
-        label = self.getObjLabel() + " - REC"
-        protTomoReconstruction = ProtNovaCtfTomoReconstruction(applyAlignment=applyAlignment,
-                                                               objLabel=label)
-        protTomoReconstruction.protTomoCtfDefocus.set(self)
-        protTomoReconstruction.numberOfThreads.set(self.numberOfThreads.get())
-        protTomoReconstruction.numberOfMpi.set(self.numberOfMpi.get())
-
-        project.scheduleProtocol(protTomoReconstruction)
 
     # --------------------------- INFO functions ------------------------------
     def _validate(self):
