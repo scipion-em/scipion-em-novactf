@@ -135,10 +135,11 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
         return cls.protReconstruct
 
     def test_tomoReconstructionOutput(self):
-        self.assertIsNotNone(self.protReconstruct.outputSetOfTomograms)
-        self.assertTrue(self.protReconstruct.outputSetOfTomograms.getSize() == 1)
+        outputName = ProtNovaCtfTomoReconstruction._possibleOutputs.Tomograms.name
+        output = getattr(self.protReconstruct, outputName)
+        self.assertIsNotNone(output)
+        self.assertTrue(output.getSize() == 1)
 
         ih = ImageHandler()
         self.assertTrue(
-            ih.getDimensions(self.protReconstruct.outputSetOfTomograms.getFirstItem()) ==
-            (960, 928, 20, 1))
+            ih.getDimensions(output.getFirstItem()) == (960, 928, 20, 1))
