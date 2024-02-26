@@ -34,7 +34,7 @@ import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
-from tomo.objects import SetOfTomograms
+from tomo.objects import SetOfTomograms, Tomogram
 
 from imod import Plugin as imodPlugin
 import imod.utils as imodUtils
