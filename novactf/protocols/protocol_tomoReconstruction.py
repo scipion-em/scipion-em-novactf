@@ -179,7 +179,11 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
             ts = self.getInputTs()[tsObjId]
             firstItem = ts.getFirstItem()
             tsFn = firstItem.getFileName()
-            hasTransform = firstItem.hasTransform()
+
+            if firstItem.hasTransform():
+                # Generate transformation matrices file
+                outputTmFile = self._getFileName("xfFn", tsId=tsId)
+                imodUtils.formatTransformFile(ts, outputTmFile)
 
             # Generate angle file
             ts.generateTltFile(self._getFileName("tltFn", tsId=tsId))
@@ -187,11 +191,6 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
         # Link tilt series file
         path.createLink(tsFn,
                         self._getFileName("inputTsFn", tsId=tsId))
-
-        if hasTransform:
-            # Generate transformation matrices file
-            outputTmFile = self._getFileName("xfFn", tsId=tsId)
-            imodUtils.formatTransformFile(ts, outputTmFile)
 
     def processIntermediateStacksStep(self, tsObjId, tsId, counter):
         self.info(f"Processing {tsId}, intermediate stack #{counter}")
@@ -217,7 +216,7 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
             '-TILTFILE': self._getFileName("tltFn", tsId=tsId),
             '-CorrectionType': self.getCorrectionType(),
             '-DefocusFileFormat': "imod",
-            '-CorrectAstigmatism': 1 if self.getInputProt().correctAstigmatism else 0,
+            '-CorrectAstigmatism': 1 if inputProt.correctAstigmatism else 0,
             '-PixelSize': self.getInputSamplingRate() / 10,
             '-AmplitudeContrast':
                 self.getInputAcquisition().getAmplitudeContrast(),
@@ -338,7 +337,7 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
         # If so, swap x and y dimensions to adapt output image
         # sizes to the final sample disposition.
         if 45 < abs(rotationAngle) < 135:
-            params3dctf['FullImage'] = f"{yDim},{xDim}"
+            params3dctf['-FULLIMAGE'] = f"{yDim},{xDim}"
 
         Plugin.runNovactf(self, **params3dctf)
 
