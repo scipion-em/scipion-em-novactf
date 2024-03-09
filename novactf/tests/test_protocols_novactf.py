@@ -26,11 +26,12 @@
 import os
 
 from pyworkflow.tests import setupTestProject, BaseTest, DataSet
+from pyworkflow.utils import magentaStr
 from pwem.emlib.image import ImageHandler
 import tomo.protocols
 import imod.protocols
 
-from ..protocols import *
+from ..protocols import ProtNovaCtfReconstruction, ProtNovaCtfDefocus
 
 
 class TestNovaCtfBase(BaseTest):
@@ -42,6 +43,7 @@ class TestNovaCtfBase(BaseTest):
     def _runImportTiltSeries(cls, filesPath, pattern, voltage, magnification,
                              samplingRate, dosePerFrame, anglesFrom=0, minAngle=0.0, maxAngle=0.0,
                              stepAngle=1.0, tiltAxisAngle=0.0):
+        print(magentaStr("\n==> Importing data - tilt series:"))
         cls.protImportTS = cls.newProtocol(tomo.protocols.ProtImportTs,
                                            filesPath=filesPath,
                                            filesPattern=pattern,
@@ -62,6 +64,7 @@ class TestNovaCtfBase(BaseTest):
     @classmethod
     def _runCTFEstimation(cls, inputSoTS, expectedDefocusOrigin, angleRange,
                           expectedDefocusValue, searchAstigmatism):
+        print(magentaStr("\n==> Running CTF estimation with IMOD:"))
         cls.protCTFEstimation = cls.newProtocol(imod.protocols.ProtImodAutomaticCtfEstimation,
                                                 inputSet=inputSoTS,
                                                 expectedDefocusOrigin=expectedDefocusOrigin,
@@ -76,18 +79,19 @@ class TestNovaCtfBase(BaseTest):
     @classmethod
     def _runComputeCtfArray(cls, inputSetOfTiltSeries, inputSetOfCtfTomoSeries, tomoThickness, tomoShift,
                             defocusStep, correctionType, correctAstigmatism):
-        cls.protCTFReconstruction = cls.newProtocol(ProtNovaCtfTomoDefocus,
-                                                    inputSetOfTiltSeries=inputSetOfTiltSeries,
-                                                    inputSetOfCtfTomoSeries=inputSetOfCtfTomoSeries,
-                                                    tomoThickness=tomoThickness,
-                                                    tomoShift=tomoShift,
-                                                    defocusStep=defocusStep,
-                                                    correctionType=correctionType,
-                                                    correctAstigmatism=correctAstigmatism)
+        print(magentaStr("\n==> Testing novactf - compute defocus array:"))
+        cls.protComputeDefocus = cls.newProtocol(ProtNovaCtfDefocus,
+                                                 inputSetOfTiltSeries=inputSetOfTiltSeries,
+                                                 inputSetOfCtfTomoSeries=inputSetOfCtfTomoSeries,
+                                                 tomoThickness=tomoThickness,
+                                                 tomoShift=tomoShift,
+                                                 defocusStep=defocusStep,
+                                                 correctionType=correctionType,
+                                                 correctAstigmatism=correctAstigmatism)
 
-        cls.launchProtocol(cls.protCTFReconstruction)
+        cls.launchProtocol(cls.protComputeDefocus)
 
-        return cls.protCTFReconstruction
+        return cls.protComputeDefocus
 
 
 class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
@@ -125,17 +129,18 @@ class TestNovaCtfReconstructionWorkflow(TestNovaCtfBase):
             tomoShift=0,
             defocusStep=50,
             correctionType=0,
-            correctAstigmatism=0)
+            correctAstigmatism=False)
 
-        cls.protReconstruct = cls.newProtocol(ProtNovaCtfTomoReconstruction,
-                                              protTomoCtfDefocus=cls.protCTFCompute,
+        print(magentaStr("\n==> Testing novactf - 3D CTF correction and reconstruction:"))
+        cls.protReconstruct = cls.newProtocol(ProtNovaCtfReconstruction,
+                                              protNovaCtfDefocus=cls.protCTFCompute,
                                               applyAlignment=False)
         cls.launchProtocol(cls.protReconstruct)
 
         return cls.protReconstruct
 
     def test_tomoReconstructionOutput(self):
-        outputName = ProtNovaCtfTomoReconstruction._possibleOutputs.Tomograms.name
+        outputName = ProtNovaCtfReconstruction._possibleOutputs.Tomograms.name
         output = getattr(self.protReconstruct, outputName)
         self.assertIsNotNone(output)
         self.assertTrue(output.getSize() == 1)
