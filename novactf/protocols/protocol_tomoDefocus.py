@@ -51,6 +51,7 @@ class ProtNovaCtfDefocus(EMProtocol):
     def __init__(self, **args):
         EMProtocol.__init__(self, **args)
         self.stepsExecutionMode = STEPS_PARALLEL
+        self.numberOfIntermediateStacks = List()
 
     def _initialize(self):
         self._createFilenameTemplates()
@@ -117,7 +118,6 @@ class ProtNovaCtfDefocus(EMProtocol):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
         self._initialize()
-        self.numberOfIntermediateStacks = List()
 
         for ts in self.getInputTs().iterItems():
             tsId = ts.getTsId()
