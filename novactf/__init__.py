@@ -23,11 +23,12 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # *****************************************************************************
+import os.path
 
 import pwem
 
 
-__version__ = '3.1.3'
+__version__ = '3.2'
 _references = ["Turonova2017"]
 NOVACTF_HOME = 'NOVACTF_HOME'
 
@@ -85,7 +86,8 @@ class Plugin(pwem.Plugin):
                        default=True)
 
     @classmethod
-    def runNovactf(cls, protocol, program, args, **kwargs):
+    def runNovactf(cls, protocol, **kwargs):
         """ Run NovaCTF command from a given protocol. """
-        fullProgram = '%s/%s/%s' % (cls.getVar(NOVACTF_HOME), "novaCTF-master", program)
-        protocol.runJob(fullProgram, args, env=cls.getEnviron(), **kwargs)
+        fullProgram = os.path.join(cls.getVar(NOVACTF_HOME), "novaCTF-master", "novaCTF")
+        args = ' '.join([f"{k} {v}" for k, v in kwargs.items()])
+        protocol.runJob(fullProgram, args, env=cls.getEnviron())
