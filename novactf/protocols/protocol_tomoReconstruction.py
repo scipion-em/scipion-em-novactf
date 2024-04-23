@@ -50,6 +50,28 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
 
     More info:
             https://github.com/turonova/novaCTF
+
+    This protocol is automatically trigered by novaCTF - compute defocus.
+
+    NovaCTF is a tomogram reconstruction algorithm that allows a local CTF correction using
+    the weighted back projection (WBP) algorithm. This local CTF correction enhances the
+    quality of the tomogram leading to a higher resolution in subtomogram averaging.\n
+
+    NovaCTF is an efficient implementation of G.J. Jensen, R.D. Kornberg, "Defocus-gradient
+    corrected backprojection", Ultramicroscopy, 84, 57-64, (2000). This algorithm uses multiple CTF
+    corrections to reconstruct the tomogram via WBP to have a local CTF corrected tomogram. To achieve
+    this, the algorithm takes into account the gradient of defocus in the sample. This means that
+    the top and the botton of the sample present different defocus values. A set of planes or
+    heights are defined along the gradient of defocus to model the defocus gradient. The number of
+    planes is determined by the parameter defocus step. By tilting the sample the defocus of a given
+    point in the sample will change with the tilt angle. This is due to the change of position
+    (height) of such point. Therefore, the defocus of the same voxel will be different in different
+    tilt images. The algorithm of novaCTF carries out a multiple CTF correction per tilt image
+    (as many as defocus steps will be defined). Then, A WBP will be carried out to reconstruct
+    the tomogram, however, according to the position of the voxel to the reconstruction the
+    corresponding CTF corrected image will be back projected. This ensures a local CTF correction
+    in the reconstruction.\n
+
     """
 
     _label = '3D CTF correction and reconstruction'
@@ -91,10 +113,6 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
                       label="NovaCTF compute defocus run",
                       pointerClass='ProtNovaCtfDefocus')
 
-        form.addParam('applyAlignment', params.BooleanParam,
-                      default=True,
-                      label="Apply tilt-series alignment?")
-
         form.addSection("Erase gold beads")
         form.addParam('doEraseGold', params.BooleanParam,
                       default=False,
@@ -105,8 +123,8 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
                       allowsNull=True,
                       condition='doEraseGold',
                       pointerClass='SetOfLandmarkModels',
-                      label='Input set of fiducial models',
-                      help='Set of fid. models with no gaps after alignment')
+                      label='Fiducial models',
+                      help='Set of fiducial models with no gaps after alignment')
         form.addParam('goldDiam', params.IntParam,
                       condition='doEraseGold',
                       default=18,
@@ -129,7 +147,9 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
                                    'function. The radial weighting function is linear away from the '
                                    'origin out to the distance in reciprocal space specified by the '
                                    'first value, followed by a Gaussian fall-off determined by the '
-                                   'second value.')
+                                   'second value. Expressed in digital units 0-0.5, where 0.5 means '
+                                   'Nyquist frequency.')
+
         group.addParam('radialFirstParameter', params.FloatParam,
                        default=0.3, label='Linear region')
         group.addParam('radialSecondParameter', params.FloatParam,
@@ -231,7 +251,7 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
                                       tsId=tsId, counter=counter)
 
         # --------- Alignment step --------------------------------------------
-        if self.applyAlignment and hasTransform:
+        if hasTransform:
             paramsAlignment = {
                 "-input": currentFn,
                 "-output": self._getFileName("stackAliFn",
@@ -382,7 +402,7 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
         validateMsgs = []
         ts = self.getInputTs()
 
-        if self.applyAlignment and not ts.getFirstItem().getFirstItem().hasTransform():
+        if not ts.getFirstItem().getFirstItem().hasTransform():
             validateMsgs.append("Input tilt-series do not have alignment "
                                 "information! You cannot apply alignment.")
 
