@@ -87,7 +87,19 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def runNovactf(cls, protocol, **kwargs):
-        """ Run NovaCTF command from a given protocol. """
-        fullProgram = os.path.join(cls.getVar(NOVACTF_HOME), "novaCTF-master", "novaCTF")
+        """ Run NovaCTF command from a given protocol. """ 
+
+        novaCTF_home = cls.getVar(NOVACTF_HOME)
+
+        # We test whether the NOVACTF_HOME variable provides a direct path to the novaCTF binary:
+        if os.path.isfile( novaCTF_home + "/novaCTF" ):
+
+            fullProgram = os.path.join(novaCTF_home, "novaCTF")
+
+        # If not, we expect it under the novaCTF-master folder:
+        else:
+
+            fullProgram = os.path.join(novaCTF_home, "novaCTF-master", "novaCTF")
+
         args = ' '.join([f"{k} {v}" for k, v in kwargs.items()])
         protocol.runJob(fullProgram, args, env=cls.getEnviron())
