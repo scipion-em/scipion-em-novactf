@@ -39,13 +39,33 @@ from novactf import Plugin
 
 class ProtNovaCtfDefocus(EMProtocol):
     """
-    Compute defocus array for each tilt-image with novaCTF.
+    Compute defocus for each tilt-image with novaCTF. This is a metaprotocol
+    and automatically will trigger novaCTf - 3D CTF correction and reconstruction
 
     More info:
             https://github.com/turonova/novaCTF
+
+    NovaCTF is a tomogram reconstruction algorithm that allows a local CTF correction using
+    the weighted back projection (WBP) algorithm. This local CTF correction enhances the
+    quality of the tomogram leading to a higher resolution in subtomogram averaging.\n
+
+    NovaCTF is an efficient implementation of G.J. Jensen, R.D. Kornberg, "Defocus-gradient
+    corrected backprojection", Ultramicroscopy, 84, 57-64, (2000). This algorithm uses multiple CTF
+    corrections to reconstruct the tomogram via WBP to have a local CTF corrected tomogram. To achieve
+    this, the algorithm takes into account the gradient of defocus in the sample. This means that
+    the top and the botton of the sample present different defocus values. A set of planes or
+    heights are defined along the gradient of defocus to model the defocus gradient. The number of
+    planes is determined by the parameter defocus step. By tilting the sample the defocus of a given
+    point in the sample will change with the tilt angle. This is due to the change of position
+    (height) of such point. Therefore, the defocus of the same voxel will be different in different
+    tilt images. The algorithm of novaCTF carries out a multiple CTF correction per tilt image
+    (as many as defocus steps will be defined). Then, A WBP will be carried out to reconstruct
+    the tomogram, however, according to the position of the voxel to the reconstruction the
+    corresponding CTF corrected image will be back projected. This ensures a local CTF correction
+    in the reconstruction.
     """
 
-    _label = 'compute defocus array'
+    _label = 'compute defocus'
     _devStatus = PROD
 
     def __init__(self, **args):
@@ -72,20 +92,23 @@ class ProtNovaCtfDefocus(EMProtocol):
         form.addSection('Input')
         form.addParam('inputSetOfTiltSeries', params.PointerParam,
                       pointerClass='SetOfTiltSeries',
-                      label='Input set of tilt-series')
+                      important=True,
+                      label='Tilt-series')
 
         form.addParam('inputSetOfCtfTomoSeries', params.PointerParam,
-                      label="Input tilt-series CTF estimation",
+                      label="Associated CTF estimation",
                       pointerClass='SetOfCTFTomoSeries',
-                      help='Select the CTF estimation for the input tilt-series.')
+                      important=True,
+                      help='CTF of the tilt-series.')
 
         form.addParam('tomoThickness', params.IntParam,
                       default=400,
                       label='Tomogram thickness (voxels)',
-                      help='Size of the tomogram in voxels in the Z direction.')
+                      help='Size of the tomogram in voxels in the Z axis (beam direction).')
 
         form.addParam('tomoShift', params.IntParam,
                       default=0,
+                      expertLevel=params.LEVEL_ADVANCED,
                       label='Tomogram shift (voxels)',
                       help='Shift of the tomogram in voxels in the Z direction. '
                            'The shift should be set to zero even if for '
@@ -106,14 +129,28 @@ class ProtNovaCtfDefocus(EMProtocol):
                       default=0,
                       label='Correction type',
                       display=params.EnumParam.DISPLAY_HLIST,
-                      help='CTF correction type to be applied for the tilt-series.')
+                      help='CTF correction type to be applied for the tilt-series. \n'
+                           ''
+                           '_Phase Flipping Method_: The phase information of the Fourier transform '
+                           'of the image is flipped by 180 degrees for those frequencies affected by '
+                           'the CTF. Then, the inverse Fourier transform is applied to obtaing the'
+                           'CTF corrected image.\n'
+                           '_Multiplication Method_: The Fourier transform of the image is multiplied'
+                           'by the CTF to attenuate the amplitudes of the frequencies affected by the '
+                           'CTF. Finally, the inverse Fourier transform is applied to reconstruct the '
+                           'corrected image.\n'
+                           'Difference:\n'
+                           '* Phase flipping directly modifies the phase information of the Fourier transform, '
+                           'while multiplication modifies the amplitudes.\n'
+                           '* Multiplication involves modeling and multiplication with a sinusoidal function, '
+                           'which can be more complex computationally.')
 
         form.addParam('correctAstigmatism', params.BooleanParam,
                       default=True,
-                      label='Correct astigmatism',
+                      label='Correct astigmatism?',
                       help='Correct for astigmatism in reconstruction.')
 
-        form.addParallelSection(threads=2)
+        form.addParallelSection(threads=4)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
