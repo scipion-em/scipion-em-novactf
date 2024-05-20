@@ -110,22 +110,36 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
         form.addSection('Input')
         form.addParam('protNovaCtfDefocus',
                       params.PointerParam,
+                      important=True,
                       label="NovaCTF compute defocus run",
                       pointerClass='ProtNovaCtfDefocus')
 
-        form.addSection("Erase gold beads")
-        form.addParam('doEraseGold', params.BooleanParam,
+        group = form.addGroup('Radial filtering',
+                              help='This entry controls low-pass filtering with the radial weighting '
+                                   'function. The radial weighting function is linear away from the '
+                                   'origin out to the distance in reciprocal space specified by the '
+                                   'first value, followed by a Gaussian fall-off determined by the '
+                                   'second value. Expressed in digital units 0-0.5, where 0.5 means '
+                                   'Nyquist frequency.')
+
+        group.addParam('radialFirstParameter', params.FloatParam,
+                       default=0.3, label='Linear region')
+        group.addParam('radialSecondParameter', params.FloatParam,
+                       default=0.05, label='Gaussian fall-off')
+
+        #form.addSection("Erase gold beads")
+        form.addHidden('doEraseGold', params.BooleanParam,
                       default=False,
                       label='Erase gold beads',
                       help='Remove the gold beads from the tilt-series.')
-        form.addParam('inputSetOfLandmarkModels',
+        form.addHidden('inputSetOfLandmarkModels',
                       params.PointerParam,
                       allowsNull=True,
                       condition='doEraseGold',
                       pointerClass='SetOfLandmarkModels',
                       label='Fiducial models',
                       help='Set of fiducial models with no gaps after alignment')
-        form.addParam('goldDiam', params.IntParam,
+        form.addHidden('goldDiam', params.IntParam,
                       condition='doEraseGold',
                       default=18,
                       label='Bead diameter (px)',
@@ -140,20 +154,6 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
                            "multiple circle objects, enter one "
                            "value to apply to all objects or a "
                            "value for each object.")
-
-        form.addSection("Filtering")
-        group = form.addGroup('Radial filtering',
-                              help='This entry controls low-pass filtering with the radial weighting '
-                                   'function. The radial weighting function is linear away from the '
-                                   'origin out to the distance in reciprocal space specified by the '
-                                   'first value, followed by a Gaussian fall-off determined by the '
-                                   'second value. Expressed in digital units 0-0.5, where 0.5 means '
-                                   'Nyquist frequency.')
-
-        group.addParam('radialFirstParameter', params.FloatParam,
-                       default=0.3, label='Linear region')
-        group.addParam('radialSecondParameter', params.FloatParam,
-                       default=0.05, label='Gaussian fall-off')
 
         form.addParallelSection(threads=8)
 
@@ -251,7 +251,7 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
                                       tsId=tsId, counter=counter)
 
         # --------- Alignment step --------------------------------------------
-        if hasTransform:
+        if ts.hasAlignment():
             paramsAlignment = {
                 "-input": currentFn,
                 "-output": self._getFileName("stackAliFn",
@@ -275,38 +275,7 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
                                           tsId=tsId, counter=counter)
 
         # ---------- Erase gold step ------------------------------------------
-        # TODO: fixme
-        if self.doEraseGold:
-            lm = self.inputSetOfLandmarkModels.get().getLandmarkModelFromTsId(tsId=tsId)
-
-            # apply alignment to fid. model
-            paramsXfModel = {
-                "-XformsToApply": outputTmFileName,
-                lm.getModelName(): "",
-                self._getFileName("eraseFidFn", tsId=tsId): ""
-            }
-            args = ' '.join([f"{k} {v}" for k, v in paramsXfModel.items()])
-            imodPlugin.runImod(self, 'xfmodel', args)
-
-            paramsCcderaser = {
-                "-InputFile": currentFn,
-                "-OutputFile": self._getFileName("stackEraseFn",
-                                                 tsId=tsId, counter=counter),
-                "-ModelFile": self._getFileName("eraseFidFn", tsId=tsId),
-                "-BetterRadius": self.goldDiam.get() / 2,
-                "-PolynomialOrder": 0,
-                "-CircleObjects": "/",
-                "-MergePatches": 1,
-                "-ExcludeAdjacent": "",
-                "-SkipTurnedOffPoints": 1,
-                "-ExpandCircleIterations": 3
-            }
-
-            args = ' '.join([f"{k} {v}" for k, v in paramsCcderaser.items()])
-            imodPlugin.runImod(self, 'ccderaser', args)
-
-            currentFn = self._getFileName("stackEraseFn",
-                                          tsId=tsId, counter=counter)
+        #TODO: There used to be an erase gold beads steps, but it was removed
 
         # ----------- Flipping step (XYZ to XZY) ------------------------------
         flipArgs = [
@@ -398,18 +367,15 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
         self._store()
 
     # --------------------------- INFO functions ------------------------------
-    def _validate(self):
-        validateMsgs = []
+    def _warnings(self):
+        warningMsgs = []
         ts = self.getInputTs()
 
-        if not ts.getFirstItem().getFirstItem().hasTransform():
-            validateMsgs.append("Input tilt-series do not have alignment "
-                                "information! You cannot apply alignment.")
+        if not ts.hasAlignment():
+            warningMsgs.append("Input tilt-series do not have alignment "
+                                "information! Are you sure you wan tot continue?")
 
-        if self.doEraseGold and not self.inputSetOfLandmarkModels.hasValue():
-            validateMsgs.append("You have to provide input set of landmarks to erase gold.")
-
-        return validateMsgs
+        return warningMsgs
 
     def _summary(self):
         summary = []
