@@ -373,7 +373,7 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
 
         if not ts.hasAlignment():
             warningMsgs.append("Input tilt-series do not have alignment "
-                                "information! Are you sure you wan tot continue?")
+                               "information! Are you sure you want to continue?")
 
         return warningMsgs
 
