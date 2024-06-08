@@ -203,7 +203,7 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
             if firstItem.hasTransform():
                 # Generate transformation matrices file
                 outputTmFile = self._getFileName("xfFn", tsId=tsId)
-                imodUtils.formatTransformFile(ts, outputTmFile)
+                imodUtils.genXfFile(ts, outputTmFile)
 
             # Generate angle file
             ts.generateTltFile(self._getFileName("tltFn", tsId=tsId))
