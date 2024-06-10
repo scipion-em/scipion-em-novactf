@@ -23,11 +23,12 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # *****************************************************************************
+import os.path
 
 import pwem
 
 
-__version__ = '3.1.2'
+__version__ = '3.2'
 _references = ["Turonova2017"]
 NOVACTF_HOME = 'NOVACTF_HOME'
 
@@ -85,7 +86,20 @@ class Plugin(pwem.Plugin):
                        default=True)
 
     @classmethod
-    def runNovactf(cls, protocol, program, args, **kwargs):
-        """ Run NovaCTF command from a given protocol. """
-        fullProgram = '%s/%s/%s' % (cls.getVar(NOVACTF_HOME), "novaCTF-master", program)
-        protocol.runJob(fullProgram, args, env=cls.getEnviron(), **kwargs)
+    def runNovactf(cls, protocol, **kwargs):
+        """ Run NovaCTF command from a given protocol. """ 
+
+        novaCTF_home = cls.getVar(NOVACTF_HOME)
+
+        # We test whether the NOVACTF_HOME variable provides a direct path to the novaCTF binary:
+        if os.path.isfile( novaCTF_home + "/novaCTF" ):
+
+            fullProgram = os.path.join(novaCTF_home, "novaCTF")
+
+        # If not, we expect it under the novaCTF-master folder:
+        else:
+
+            fullProgram = os.path.join(novaCTF_home, "novaCTF-master", "novaCTF")
+
+        args = ' '.join([f"{k} {v}" for k, v in kwargs.items()])
+        protocol.runJob(fullProgram, args, env=cls.getEnviron())
