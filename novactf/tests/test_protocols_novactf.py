@@ -66,7 +66,7 @@ class TestNovaCtfBase(BaseTest):
                           expectedDefocusValue, searchAstigmatism):
         print(magentaStr("\n==> Running CTF estimation with IMOD:"))
         cls.protCTFEstimation = cls.newProtocol(imod.protocols.ProtImodAutomaticCtfEstimation,
-                                                inputSet=inputSoTS,
+                                                inputSetOfTiltSeries=inputSoTS,
                                                 expectedDefocusOrigin=expectedDefocusOrigin,
                                                 expectedDefocusValue=expectedDefocusValue,
                                                 angleRange=angleRange,
