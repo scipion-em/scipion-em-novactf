@@ -1,4 +1,4 @@
-# **************************************************************************
+# *****************************************************************************
 # *
 # * Authors:     Federico P. de Isidro Gomez (fp.deisidro@cnb.csic.es) [1]
 # *
@@ -22,64 +22,121 @@
 # *  All comments concerning this program package may be sent to the
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
-# **************************************************************************
-
+# *****************************************************************************
 import os
+from enum import Enum
 
-from pyworkflow import BETA
+from pyworkflow.constants import PROD
 from pyworkflow.object import Set
 import pyworkflow.protocol.params as params
 import pyworkflow.utils.path as path
 from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
-from tomo.objects import Tomogram
+from tomo.objects import SetOfTomograms, Tomogram
 
 from imod import Plugin as imodPlugin
-import imod.utils as imodUtils
+from imod import utils as imodUtils
+from novactf import Plugin
 
-from .. import Plugin
+
+class outputs(Enum):
+    Tomograms = SetOfTomograms
 
 
-class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
+class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
     """
     Tomogram reconstruction with 3D CTF correction by novaCTF.
 
     More info:
             https://github.com/turonova/novaCTF
+
+    This protocol is automatically trigered by novaCTF - compute defocus.
+
+    NovaCTF is a tomogram reconstruction algorithm that allows a local CTF correction using
+    the weighted back projection (WBP) algorithm. This local CTF correction enhances the
+    quality of the tomogram leading to a higher resolution in subtomogram averaging.\n
+
+    NovaCTF is an efficient implementation of G.J. Jensen, R.D. Kornberg, "Defocus-gradient
+    corrected backprojection", Ultramicroscopy, 84, 57-64, (2000). This algorithm uses multiple CTF
+    corrections to reconstruct the tomogram via WBP to have a local CTF corrected tomogram. To achieve
+    this, the algorithm takes into account the gradient of defocus in the sample. This means that
+    the top and the botton of the sample present different defocus values. A set of planes or
+    heights are defined along the gradient of defocus to model the defocus gradient. The number of
+    planes is determined by the parameter defocus step. By tilting the sample the defocus of a given
+    point in the sample will change with the tilt angle. This is due to the change of position
+    (height) of such point. Therefore, the defocus of the same voxel will be different in different
+    tilt images. The algorithm of novaCTF carries out a multiple CTF correction per tilt image
+    (as many as defocus steps will be defined). Then, A WBP will be carried out to reconstruct
+    the tomogram, however, according to the position of the voxel to the reconstruction the
+    corresponding CTF corrected image will be back projected. This ensures a local CTF correction
+    in the reconstruction.\n
+
     """
 
     _label = '3D CTF correction and reconstruction'
-    _devStatus = BETA
+    _devStatus = PROD
+    _possibleOutputs = outputs
     stepsExecutionMode = STEPS_PARALLEL
+
+    def _initialize(self):
+        self._createFilenameTemplates()
+
+    def _createFilenameTemplates(self):
+        """ Centralize how files are called. """
+        tmpPath = lambda p: self._getTmpPath("%(tsId)s", "%(tsId)s" + p)
+        myDict = {
+            'tltFn': tmpPath(".tlt"),
+            'xfFn': tmpPath(".xf"),
+            'inputTsFn': tmpPath(".mrc"),
+            'stackTsFn': tmpPath(".mrc_%(counter)d"),
+            'stackAliFn': tmpPath("_ali.mrc_%(counter)d"),
+            'stackEraseFn': tmpPath("_erase.mrc_%(counter)d"),
+            'eraseFidFn': tmpPath("_erase.fid"),
+            'stackFlipFn': tmpPath("_flip.mrc_%(counter)d"),
+            'stackFilterFn': tmpPath("_filter.mrc_%(counter)d"),
+            'filterFn': tmpPath("_filter.mrc"),
+            'recFn': tmpPath("_rec.mrc"),
+            'outputTsFn': self._getExtraPath("%(tsId)s", "%(tsId)s.mrc"),
+        }
+
+        self._updateFilenamesDict(myDict)
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
         form.addSection('Input')
-
-        form.addParam('protTomoCtfDefocus',
+        form.addParam('protNovaCtfDefocus',
                       params.PointerParam,
+                      important=True,
                       label="NovaCTF compute defocus run",
-                      pointerClass='ProtNovaCtfTomoDefocus')
+                      pointerClass='ProtNovaCtfDefocus')
 
-        form.addParam('applyAlignment', params.BooleanParam,
-                      default=True,
-                      label="Apply tilt-series alignment?")
+        group = form.addGroup('Radial filtering',
+                              help='This entry controls low-pass filtering with the radial weighting '
+                                   'function. The radial weighting function is linear away from the '
+                                   'origin out to the distance in reciprocal space specified by the '
+                                   'first value, followed by a Gaussian fall-off determined by the '
+                                   'second value. Expressed in digital units 0-0.5, where 0.5 means '
+                                   'Nyquist frequency.')
 
-        form.addSection("Erase gold beads")
-        form.addParam('doEraseGold', params.BooleanParam,
-                      default=False, label='Erase gold beads',
+        group.addParam('radialFirstParameter', params.FloatParam,
+                       default=0.3, label='Linear region')
+        group.addParam('radialSecondParameter', params.FloatParam,
+                       default=0.05, label='Gaussian fall-off')
+
+        #form.addSection("Erase gold beads")
+        form.addHidden('doEraseGold', params.BooleanParam,
+                      default=False,
+                      label='Erase gold beads',
                       help='Remove the gold beads from the tilt-series.')
-
-        form.addParam('inputSetOfLandmarkModels',
+        form.addHidden('inputSetOfLandmarkModels',
                       params.PointerParam,
                       allowsNull=True,
                       condition='doEraseGold',
                       pointerClass='SetOfLandmarkModels',
-                      label='Input set of fiducial models',
-                      help='Set of fid. models with no gaps after alignment')
-
-        form.addParam('goldDiam', params.IntParam,
+                      label='Fiducial models',
+                      help='Set of fiducial models with no gaps after alignment')
+        form.addHidden('goldDiam', params.IntParam,
                       condition='doEraseGold',
                       default=18,
                       label='Bead diameter (px)',
@@ -95,323 +152,204 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                            "value to apply to all objects or a "
                            "value for each object.")
 
-        form.addSection("Filtering")
-        group = form.addGroup('Radial filtering',
-                              help='This entry controls low-pass filtering with the radial weighting '
-                                   'function. The radial weighting function is linear away from the '
-                                   'origin out to the distance in reciprocal space specified by the '
-                                   'first value, followed by a Gaussian fall-off determined by the '
-                                   'second value.')
-        group.addParam('radialFirstParameter',
-                       params.FloatParam,
-                       default=0.3,
-                       label='Linear region')
-        group.addParam('radialSecondParameter',
-                       params.FloatParam,
-                       default=0.05,
-                       label='Gaussian fall-off')
+        form.addParallelSection(threads=8)
 
-        form.addParallelSection(threads=4, mpi=1)
-
-    # -------------------------- INSERT steps functions ---------------------
+    # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        self._initialize()
         allCreateOutputId = []
-        nstacks = self.protTomoCtfDefocus.get().numberOfIntermediateStacks
+        nstacks = self.getInputProt().numberOfIntermediateStacks
 
-        for index, ts in enumerate(self.getInputTs()):
+        for index, ts in enumerate(self.getInputTs().iterItems()):
+            tsId = ts.getTsId()
+            objId = ts.getObjId()
             convertInputId = self._insertFunctionStep(self.convertInputStep,
-                                                      ts.getObjId(), needsGPU=False)
+                                                      objId, tsId, needsGPU=False)
 
             intermediateStacksId = []
-
             for counter in range(nstacks[index].get()):
                 ctfId = self._insertFunctionStep(self.processIntermediateStacksStep,
-                                                 ts.getObjId(),
-                                                 counter,
+                                                 objId, tsId, counter,
                                                  prerequisites=[convertInputId], needsGPU=False)
                 intermediateStacksId.append(ctfId)
 
-            reconstructionId = self._insertFunctionStep(self.computeReconstructionStep,
-                                                        ts.getObjId(), nstacks[index].get(),
-                                                        prerequisites=intermediateStacksId, needsGPU=False)
+            reconstructId = self._insertFunctionStep(self.computeReconstructionStep,
+                                                     objId, tsId,
+                                                     nstacks[index].get(),
+                                                     prerequisites=intermediateStacksId, needsGPU=False)
 
             createOutputId = self._insertFunctionStep(self.createOutputStep,
-                                                      ts.getObjId(),
-                                                      prerequisites=[reconstructionId], needsGPU=False)
+                                                      objId, tsId,
+                                                      prerequisites=[reconstructId], needsGPU=False)
             allCreateOutputId.append(createOutputId)
 
         self._insertFunctionStep(self.closeOutputSetsStep,
                                  prerequisites=allCreateOutputId, needsGPU=False)
 
-    # --------------------------- STEPS functions ----------------------------
-    def convertInputStep(self, tsObjId):
-        with self._lock:
-            ts = self.getInputTs()[tsObjId]
-            firstItem = ts.getFirstItem()
-
-        tsId = ts.getTsId()
-        extraPrefix = self._getExtraPath(tsId)
-        tmpPrefix = self._getTmpPath(tsId)
-        path.makePath(tmpPrefix)
-        path.makePath(extraPrefix)
-
-        outputTsFileName = os.path.join(tmpPrefix,
-                                        firstItem.parseFileName(extension=".mrc"))
-        self.info("Tilt series %s linked." % tsId)
-        path.createLink(firstItem.getFileName(), outputTsFileName)
-
-        # Generate angle file
-        outputTltFileName = os.path.join(tmpPrefix,
-                                         firstItem.parseFileName(extension=".tlt"))
-        ts.generateTltFile(outputTltFileName)
-
-        if firstItem.hasTransform():
-            # Generate transformation matrices file
-            outputTmFileName = os.path.join(tmpPrefix,
-                                            firstItem.parseFileName(extension=".xf"))
-            imodUtils.formatTransformFile(ts, outputTmFileName)
-
-    def processIntermediateStacksStep(self, tsObjId, counter):
+    # --------------------------- STEPS functions -----------------------------
+    def convertInputStep(self, tsObjId, tsId):
+        # Create the folders for the tilt series
+        path.makePath(self._getTmpPath(tsId))
+        path.makePath(self._getExtraPath(tsId))
 
         with self._lock:
             ts = self.getInputTs()[tsObjId]
             firstItem = ts.getFirstItem()
+            tsFn = firstItem.getFileName()
 
-        tsId = ts.getTsId()
-        tmpPrefix = self._getTmpPath(tsId)
-        extraPrefixPreviousProt = self.protTomoCtfDefocus.get()._getExtraPath(tsId)
+            if firstItem.hasTransform():
+                # Generate transformation matrices file
+                outputTmFile = self._getFileName("xfFn", tsId=tsId)
+                imodUtils.genXfFile(ts, outputTmFile)
 
-        defocusFilePath = os.path.join(extraPrefixPreviousProt,
-                                       firstItem.parseFileName(extension=".defocus_"))
-        tltFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".tlt"))
-        outputFilePath = os.path.join(tmpPrefix, firstItem.parseFileName(extension=".mrc_"))
+            # Generate angle file
+            ts.generateTltFile(self._getFileName("tltFn", tsId=tsId))
 
-        # CTF correction step
+        # Link tilt series file
+        path.createLink(tsFn,
+                        self._getFileName("inputTsFn", tsId=tsId))
+
+    def processIntermediateStacksStep(self, tsObjId, tsId, counter):
+        self.info(f"Processing {tsId}, intermediate stack #{counter}")
+        inputProt = self.getInputProt()
+        inputProt._createFilenameTemplates()
+        defocusFn = inputProt._getFileName("stackDefocusFn",
+                                           tsId=tsId, counter=counter)
+
+        with self._lock:
+            ts = self.getInputTs()[tsObjId]
+            rotationAngle = ts.getAcquisition().getTiltAxisAngle()
+            firstItem = ts.getFirstItem()
+            xDim, yDim, _ = firstItem.getDim()
+            hasTransform = firstItem.hasTransform()
+
+        # ---------- CTF correction step --------------------------------------
         paramsCtfCorrection = {
-            'Algorithm': "ctfCorrection",
-            'InputProjections': os.path.join(tmpPrefix,
-                                             firstItem.parseFileName(extension=".mrc")),
-            'OutputFile': outputFilePath + str(counter),
-            'DefocusFile': defocusFilePath + str(counter),
-            'TiltFile': tltFilePath,
-            'CorrectionType': self.getCorrectionType(),
-            'DefocusFileFormat': "imod",
-            'CorrectAstigmatism': self.protTomoCtfDefocus.get().correctAstigmatism.get(),
-            'PixelSize': self.getInputTs().getSamplingRate() / 10,
-            'AmplitudeContrast':
-                self.getInputTs().getAcquisition().getAmplitudeContrast(),
-            'SphericalAberration':
-                self.getInputTs().getAcquisition().getSphericalAberration(),
-            'Voltage': self.getInputTs().getAcquisition().getVoltage()
+            '-Algorithm': "ctfCorrection",
+            '-InputProjections': self._getFileName("inputTsFn", tsId=tsId),
+            '-OutputFile': self._getFileName("stackTsFn",
+                                             tsId=tsId, counter=counter),
+            '-DefocusFile': defocusFn,
+            '-TILTFILE': self._getFileName("tltFn", tsId=tsId),
+            '-CorrectionType': self.getCorrectionType(),
+            '-DefocusFileFormat': "imod",
+            '-CorrectAstigmatism': 1 if inputProt.correctAstigmatism else 0,
+            '-PixelSize': self.getInputSamplingRate() / 10,
+            '-AmplitudeContrast':
+                self.getInputAcquisition().getAmplitudeContrast(),
+            '-Cs':
+                self.getInputAcquisition().getSphericalAberration(),
+            '-Volt': self.getInputAcquisition().getVoltage()
         }
 
-        argsCtfCorrection = "-Algorithm %(Algorithm)s " \
-                            "-InputProjections %(InputProjections)s " \
-                            "-OutputFile %(OutputFile)s " \
-                            "-DefocusFile %(DefocusFile)s " \
-                            "-TILTFILE %(TiltFile)s " \
-                            "-CorrectionType %(CorrectionType)s " \
-                            "-DefocusFileFormat %(DefocusFileFormat)s " \
-                            "-CorrectAstigmatism %(CorrectAstigmatism)s " \
-                            "-PixelSize %(PixelSize)f " \
-                            "-AmplitudeContrast %(AmplitudeContrast)f " \
-                            "-Cs %(SphericalAberration)f " \
-                            "-Volt %(Voltage)d "
+        Plugin.runNovactf(self, **paramsCtfCorrection)
 
-        Plugin.runNovactf(self, 'novaCTF', argsCtfCorrection % paramsCtfCorrection)
-        currentFn = outputFilePath + str(counter)
+        currentFn = self._getFileName("stackTsFn",
+                                      tsId=tsId, counter=counter)
 
-        # Alignment step
-        if self.applyAlignment and firstItem.hasTransform():
+        # --------- Alignment step --------------------------------------------
+        if ts.hasAlignment():
             paramsAlignment = {
-                'input': currentFn,
-                'output': os.path.join(tmpPrefix,
-                                       firstItem.parseFileName(suffix="_ali",
-                                                               extension=".mrc_")) + str(counter),
-                'xform': os.path.join(tmpPrefix,
-                                      firstItem.parseFileName(extension=".xf"))
+                "-input": currentFn,
+                "-output": self._getFileName("stackAliFn",
+                                             tsId=tsId, counter=counter),
+                "-xform": self._getFileName("xfFn", tsId=tsId),
+                "-AdjustOrigin": "",
+                "-NearestNeighbor": "",
+                "-taper": "1,1"
             }
-
-            argsAlignment = "-input %(input)s " \
-                            "-output %(output)s " \
-                            "-xform %(xform)s -AdjustOrigin -NearestNeighbor -taper 1,1 "
-
-            rotationAngle = ts.getAcquisition().getTiltAxisAngle()
 
             # Check if rotation angle is greater than 45º.
             # If so, swap x and y dimensions to adapt output image
             # sizes to the final sample disposition.
             if 45 < abs(rotationAngle) < 135:
-                paramsAlignment.update({
-                    'size': "%d,%d" % (firstItem.getYDim(), firstItem.getXDim())
-                })
+                paramsAlignment['-size'] = f"{yDim},{xDim}"
 
-                argsAlignment += "-size %(size)s "
+            args = ' '.join([f"{k} {v}" for k, v in paramsAlignment.items()])
+            imodPlugin.runImod(self, 'newstack', args)
 
-            imodPlugin.runImod(self, 'newstack', argsAlignment % paramsAlignment)
-            currentFn = os.path.join(tmpPrefix,
-                                     firstItem.parseFileName(suffix="_ali",
-                                                             extension=".mrc_")) + str(counter)
+            currentFn = self._getFileName("stackAliFn",
+                                          tsId=tsId, counter=counter)
 
-        # Erase gold step  # TODO: fixme
-        if self.doEraseGold:
-            lm = self.inputSetOfLandmarkModels.get().getLandmarkModelFromTsId(tsId=tsId)
+        # ---------- Erase gold step ------------------------------------------
+        #TODO: There used to be an erase gold beads steps, but it was removed
 
-            # apply alignment to fid. model
-            imodPlugin.runImod(self, 'xfmodel',
-                               f'-XformsToApply {outputTmFileName}'
-                               f' {lm.getModelName()} '
-                               f'{os.path.join(tmpPrefix, firstItem.parseFileName(suffix="_erase", extension=".fid"))}')
+        # ----------- Flipping step (XYZ to XZY) ------------------------------
+        flipArgs = [
+            "flipyz",
+            currentFn,
+            self._getFileName("stackFlipFn", tsId=tsId, counter=counter)
+        ]
+        imodPlugin.runImod(self, 'clip', " ".join(flipArgs))
 
-            paramsCcderaser = {
-                'inputFile': currentFn,
-                'outputFile': os.path.join(tmpPrefix,
-                                           firstItem.parseFileName(suffix="_erase",
-                                                                   extension=".mrc_" + str(counter))),
-                'modelFile': os.path.join(tmpPrefix,
-                                          firstItem.parseFileName(suffix="_erase", extension=".fid")),
-                'betterRadius': self.goldDiam.get() / 2,
-                'polynomialOrder': 0,
-                'circleObjects': "/"
-            }
+        currentFn = self._getFileName("stackFlipFn", tsId=tsId, counter=counter)
 
-            argsCcderaser = "-InputFile %(inputFile)s " \
-                            "-OutputFile %(outputFile)s " \
-                            "-ModelFile %(modelFile)s " \
-                            "-BetterRadius %(betterRadius)f " \
-                            "-PolynomialOrder %(polynomialOrder)d " \
-                            "-CircleObjects %(circleObjects)s " \
-                            "-MergePatches 1 " \
-                            "-ExcludeAdjacent " \
-                            "-SkipTurnedOffPoints 1 " \
-                            "-ExpandCircleIterations 3 "
-
-            imodPlugin.runImod(self, 'ccderaser', argsCcderaser % paramsCcderaser)
-            currentFn = os.path.join(tmpPrefix,
-                                     firstItem.parseFileName(suffix="_erase",
-                                                             extension=".mrc_" + str(counter)))
-
-        # Flipping step (XYZ to XZY)
-        paramsClip = {
-            'inputFilePath': currentFn,
-            'outputFilePath': os.path.join(tmpPrefix,
-                                           firstItem.parseFileName(suffix="_flip",
-                                                                   extension=".mrc_" + str(counter))),
+        # ------------- Filtering step ----------------------------------------
+        paramsFilter = {
+            "-Algorithm": "filterProjections",
+            "-InputProjections": currentFn,
+            "-OutputFile": self._getFileName("stackFilterFn",
+                                             tsId=tsId, counter=counter),
+            "-TILTFILE": self._getFileName("tltFn", tsId=tsId),
+            "-StackOrientation": "xz",
+            "-RADIAL":
+                f"{self.radialFirstParameter.get()},{self.radialSecondParameter.get()}"
         }
 
-        argsClip = "flipyz " \
-                   "%(inputFilePath)s " \
-                   "%(outputFilePath)s "
+        Plugin.runNovactf(self, **paramsFilter)
 
-        imodPlugin.runImod(self, 'clip', argsClip % paramsClip)
-        currentFn = os.path.join(tmpPrefix,
-                                 firstItem.parseFileName(suffix="_flip",
-                                                         extension=".mrc_" + str(counter)))
-
-        # Filtering step
-        outputFilePath = os.path.join(tmpPrefix,
-                                      firstItem.parseFileName(suffix="_filter", extension=".mrc_"))
-
-        paramsFilterProjections = {
-            'Algorithm': "filterProjections",
-            'InputProjections': currentFn,
-            'OutputFile': outputFilePath + str(counter),
-            'TiltFile': tltFilePath,
-            'StackOrientation': "xz",
-            'Radial': str(self.radialFirstParameter.get()) + "," + str(self.radialSecondParameter.get())
-        }
-
-        argsFilterProjections = "-Algorithm %(Algorithm)s " \
-                                "-InputProjections %(InputProjections)s " \
-                                "-OutputFile %(OutputFile)s " \
-                                "-TILTFILE %(TiltFile)s " \
-                                "-StackOrientation %(StackOrientation)s " \
-                                "-RADIAL %(Radial)s "
-
-        Plugin.runNovactf(self, 'novaCTF', argsFilterProjections % paramsFilterProjections)
-
-    def computeReconstructionStep(self, tsObjId, nstacks):
+    def computeReconstructionStep(self, tsObjId, tsId, nstacks):
         with self._lock:
             ts = self.getInputTs()[tsObjId]
             firstItem = ts.getFirstItem()
+            xDim, yDim, _ = firstItem.getDim()
+            rotationAngle = ts.getAcquisition().getTiltAxisAngle()
 
-        tsId = ts.getTsId()
-
-        extraPrefix = self._getExtraPath(tsId)
-        tmpPrefix = self._getTmpPath(tsId)
-
-        outputFilePath = os.path.join(tmpPrefix,
-                                      firstItem.parseFileName(suffix="_rec", extension=".mrc"))
-        tltFilePath = os.path.join(tmpPrefix,
-                                   firstItem.parseFileName(extension=".tlt"))
-
+        # ----------- 3D CTF step ---------------------------------------------
         params3dctf = {
-            'Algorithm': "3dctf",
-            'InputProjections': os.path.join(tmpPrefix, firstItem.parseFileName(suffix="_filter",
-                                                                                extension=".mrc")),
-            'OutputFile': outputFilePath,
-            'FullImage': "%d,%d" % (firstItem.getXDim(), firstItem.getYDim()),
-            'TiltFile': tltFilePath,
-            'Thickness': self.protTomoCtfDefocus.get().tomoThickness.get(),
-            'Shift': "0.0," + str(self.protTomoCtfDefocus.get().tomoShift.get()),
-            'PixelSize': self.getInputTs().getSamplingRate() / 10,
-            'NumberOfStacks': nstacks
+            "-Algorithm": "3dctf",
+            "-InputProjections": self._getFileName("filterFn", tsId=tsId),
+            "-OutputFile": self._getFileName("recFn", tsId=tsId),
+            "-FULLIMAGE": f"{xDim},{yDim}",
+            "-TILTFILE": self._getFileName("tltFn", tsId=tsId),
+            "-THICKNESS": self.getInputProt().tomoThickness,
+            "-SHIFT": f"0.0,{self.getInputProt().tomoShift.get()}",
+            "-PixelSize": self.getInputSamplingRate() / 10,
+            "-NumberOfInputStacks": nstacks,
+            "-Use3DCTF": 1
         }
-
-        args3dctf = "-Algorithm %(Algorithm)s " \
-                    "-InputProjections %(InputProjections)s " \
-                    "-OutputFile %(OutputFile)s " \
-                    "-FULLIMAGE %(FullImage)s " \
-                    "-TILTFILE %(TiltFile)s " \
-                    "-THICKNESS %(Thickness)d " \
-                    "-SHIFT %(Shift)s " \
-                    "-PixelSize %(PixelSize)f " \
-                    "-NumberOfInputStacks %(NumberOfStacks)d " \
-                    "-Use3DCTF 1 "
 
         # Check if rotation angle is greater than 45º.
         # If so, swap x and y dimensions to adapt output image
         # sizes to the final sample disposition.
-
-        rotationAngle = ts.getAcquisition().getTiltAxisAngle()
-
         if 45 < abs(rotationAngle) < 135:
-            params3dctf['FullImage'] = "%d,%d" % (firstItem.getYDim(), firstItem.getXDim())
+            params3dctf['-FULLIMAGE'] = f"{yDim},{xDim}"
 
-        Plugin.runNovactf(self, 'novaCTF', args3dctf % params3dctf)
+        Plugin.runNovactf(self, **params3dctf)
 
-        # Trim vol - rotate around X
-        paramsTrimvol = {
-            'inputFilePath': outputFilePath,
-            'outputFilePath': os.path.join(extraPrefix,
-                                           firstItem.parseFileName(extension=".mrc"))
-        }
-
-        argsTrimvol = "-rx %(inputFilePath)s " \
-                      "%(outputFilePath)s "
-
-        imodPlugin.runImod(self, 'trimvol', argsTrimvol % paramsTrimvol)
+        # ---------- Trim vol - rotate around X -------------------------------
+        inputFn = self._getFileName("recFn", tsId=tsId)
+        outputFn = self._getFileName("outputTsFn", tsId=tsId)
+        imodPlugin.runImod(self, 'trimvol',
+                           " ".join(["-rx", inputFn, outputFn]))
 
         # Remove intermediate files. Necessary for big sets of tilt-series
-        path.cleanPath(self._getTmpPath(tsId))
+        if os.path.exists(outputFn):
+            path.cleanPath(self._getTmpPath(tsId))
 
-    def createOutputStep(self, tsObjId):
+    def createOutputStep(self, tsObjId, tsId):
         with self._lock:
             ts = self.getInputTs()[tsObjId]
-            firstItem = ts.getFirstItem()
             acq = ts.getAcquisition()
 
-        tsId = ts.getTsId()
-        extraPrefix = self._getExtraPath(tsId)
-
         outputTomos = self.getOutputSetOfTomograms()
-        outputFn = os.path.join(extraPrefix, firstItem.parseFileName(extension=".mrc"))
+        outputFn = self._getFileName("outputTsFn", tsId=tsId)
 
         if os.path.exists(outputFn):
             newTomogram = Tomogram()
             newTomogram.setLocation(outputFn)
             newTomogram.setTsId(tsId)
-            newTomogram.setSamplingRate(ts.getSamplingRate())
+            newTomogram.setSamplingRate(self.getInputSamplingRate())
 
             # Set default tomogram origin
             newTomogram.setOrigin(newOrigin=None)
@@ -425,27 +363,24 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
         self.getOutputSetOfTomograms().setStreamState(Set.STREAM_CLOSED)
         self._store()
 
-    # --------------------------- INFO functions ----------------------------
-    def _validate(self):
-        validateMsg = []
-
+    # --------------------------- INFO functions ------------------------------
+    def _warnings(self):
+        warningMsgs = []
         ts = self.getInputTs()
-        if self.applyAlignment and not ts.getFirstItem().getFirstItem().hasTransform():
-            validateMsg.append("Input tilt-series do not have alignment "
-                               "information! You cannot apply alignment.")
 
-        if self.doEraseGold and not self.inputSetOfLandmarkModels.hasValue():
-            validateMsg.append("You have to provide input set of landmarks to erase gold.")
+        if not ts.hasAlignment():
+            warningMsgs.append("Input tilt-series do not have alignment "
+                               "information! Are you sure you want to continue?")
 
-        return validateMsg
+        return warningMsgs
 
     def _summary(self):
         summary = []
 
-        if hasattr(self, 'outputSetOfTomograms'):
+        if hasattr(self, outputs.Tomograms.name):
             summary.append(f"Input tilt-series: {self.getInputTs().getSize()}\n"
-                           f"CTF corrected tomos calculated: "
-                           f"{self.outputSetOfTomograms.getSize()}")
+                           "CTF corrected tomos calculated: "
+                           f"{getattr(self, outputs.Tomograms.name).getSize()}")
         else:
             summary.append("Outputs are not ready yet.")
 
@@ -454,36 +389,47 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
     def _methods(self):
         methods = []
 
-        if hasattr(self, 'outputSetOfTomograms'):
-            methods.append(f"{self.outputSetOfTomograms.getSize()} "
+        if hasattr(self, outputs.Tomograms.name):
+            methods.append(f"{getattr(self, outputs.Tomograms.name).getSize()} "
                            "3D CTF corrected tomograms have been calculated "
                            "with NovaCTF.")
 
         return methods
 
-    # --------------------------- UTILS functions ----------------------------
+    # --------------------------- UTILS functions -----------------------------
+    def getOutputSetOfTomograms(self):
+        outputName = outputs.Tomograms.name
+        if hasattr(self, outputName):
+            getattr(self, outputName).enableAppend()
+        else:
+            outputSetOfTomograms = self._createSetOfTomograms()
+            outputSetOfTomograms.copyInfo(self.getInputTs())
+            outputSetOfTomograms.setStreamState(Set.STREAM_OPEN)
+            self._defineOutputs(**{outputName: outputSetOfTomograms})
+            self._defineSourceRelation(self.getInputTs(pointer=True),
+                                       outputSetOfTomograms)
+
+        return getattr(self, outputName)
+
     def getInputTs(self, pointer=False):
         if pointer:
-            return self.protTomoCtfDefocus.get().inputSetOfTiltSeries
+            return self.getInputProt().inputSetOfTiltSeries
         else:
-            return self.protTomoCtfDefocus.get().inputSetOfTiltSeries.get()
+            return self.getInputProt().inputSetOfTiltSeries.get()
+
+    def getInputProt(self):
+        return self.protNovaCtfDefocus.get()
+
+    def getInputSamplingRate(self):
+        return self.getInputTs().getSamplingRate()
+
+    def getInputAcquisition(self):
+        return self.getInputTs().getAcquisition()
 
     def getCorrectionType(self):
-        if self.protTomoCtfDefocus.get().correctionType.get() == 0:
+        if self.getInputProt().correctionType.get() == 0:
             correctionType = "phaseflip"
         else:
             correctionType = "multiplication"
 
         return correctionType
-
-    def getOutputSetOfTomograms(self):
-        if hasattr(self, "outputSetOfTomograms"):
-            self.outputSetOfTomograms.enableAppend()
-        else:
-            outputSetOfTomograms = self._createSetOfTomograms()
-            outputSetOfTomograms.copyInfo(self.getInputTs())
-            outputSetOfTomograms.setStreamState(Set.STREAM_OPEN)
-            self._defineOutputs(outputSetOfTomograms=outputSetOfTomograms)
-            self._defineSourceRelation(self.getInputTs(pointer=True), outputSetOfTomograms)
-
-        return self.outputSetOfTomograms
