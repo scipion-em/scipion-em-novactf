@@ -51,11 +51,8 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
 
     _label = 'compute defocus array'
     _devStatus = BETA
+    stepsExecutionMode = STEPS_PARALLEL
 
-    def __init__(self, **args):
-        EMProtocol.__init__(self, **args)
-        ProtTomoBase.__init__(self)
-        self.stepsExecutionMode = STEPS_PARALLEL
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -122,8 +119,8 @@ class ProtNovaCtfTomoDefocus(EMProtocol, ProtTomoBase):
     def _insertAllSteps(self):
         self.numberOfIntermediateStacks = List([])
         for ts in self.getInputTs():
-            self._insertFunctionStep(self.convertInputStep, ts.getObjId())
-            self._insertFunctionStep(self.computeDefocusStep, ts.getObjId())
+            self._insertFunctionStep(self.convertInputStep, ts.getObjId(), needsGPU=False)
+            self._insertFunctionStep(self.computeDefocusStep, ts.getObjId(), needsGPU=False)
         self._insertFunctionStep(self.triggerReconstructionProtocolStep)
 
     # --------------------------- STEPS functions -----------------------------

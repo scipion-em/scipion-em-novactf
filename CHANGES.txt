@@ -1,3 +1,4 @@
+3.1.2: Fix test, relax installation requirements for folders or libraries.
 3.1.1: fix reconstruction protocol trigger if no alignment exists
 3.1:
 - fix defocus shift: should be passed in a file for ctf correction, and as a param for reconstruction

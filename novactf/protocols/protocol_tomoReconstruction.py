@@ -51,11 +51,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
     _label = '3D CTF correction and reconstruction'
     _devStatus = BETA
-
-    def __init__(self, **args):
-        EMProtocol.__init__(self, **args)
-        ProtTomoBase.__init__(self)
-        self.stepsExecutionMode = STEPS_PARALLEL
+    stepsExecutionMode = STEPS_PARALLEL
 
     # -------------------------- DEFINE param functions -----------------------
     def _defineParams(self, form):
@@ -124,7 +120,7 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
 
         for index, ts in enumerate(self.getInputTs()):
             convertInputId = self._insertFunctionStep(self.convertInputStep,
-                                                      ts.getObjId())
+                                                      ts.getObjId(), needsGPU=False)
 
             intermediateStacksId = []
 
@@ -132,20 +128,20 @@ class ProtNovaCtfTomoReconstruction(EMProtocol, ProtTomoBase):
                 ctfId = self._insertFunctionStep(self.processIntermediateStacksStep,
                                                  ts.getObjId(),
                                                  counter,
-                                                 prerequisites=[convertInputId])
+                                                 prerequisites=[convertInputId], needsGPU=False)
                 intermediateStacksId.append(ctfId)
 
             reconstructionId = self._insertFunctionStep(self.computeReconstructionStep,
                                                         ts.getObjId(), nstacks[index].get(),
-                                                        prerequisites=intermediateStacksId)
+                                                        prerequisites=intermediateStacksId, needsGPU=False)
 
             createOutputId = self._insertFunctionStep(self.createOutputStep,
                                                       ts.getObjId(),
-                                                      prerequisites=[reconstructionId])
+                                                      prerequisites=[reconstructionId], needsGPU=False)
             allCreateOutputId.append(createOutputId)
 
         self._insertFunctionStep(self.closeOutputSetsStep,
-                                 prerequisites=allCreateOutputId)
+                                 prerequisites=allCreateOutputId, needsGPU=False)
 
     # --------------------------- STEPS functions ----------------------------
     def convertInputStep(self, tsObjId):

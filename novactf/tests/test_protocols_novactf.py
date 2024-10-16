@@ -63,7 +63,7 @@ class TestNovaCtfBase(BaseTest):
     def _runCTFEstimation(cls, inputSoTS, expectedDefocusOrigin, angleRange,
                           expectedDefocusValue, searchAstigmatism):
         cls.protCTFEstimation = cls.newProtocol(imod.protocols.ProtImodAutomaticCtfEstimation,
-                                                inputSet=inputSoTS,
+                                                inputSetOfTiltSeries=inputSoTS,
                                                 expectedDefocusOrigin=expectedDefocusOrigin,
                                                 expectedDefocusValue=expectedDefocusValue,
                                                 angleRange=angleRange,
