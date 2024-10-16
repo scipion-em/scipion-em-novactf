@@ -155,7 +155,7 @@ class ProtNovaCtfDefocus(EMProtocol):
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
 
-      self._initialize()
+        self._initialize()
 
         for ts in self.getInputTs().iterItems():
             tsId = ts.getTsId()
