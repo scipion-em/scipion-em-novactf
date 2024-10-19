@@ -26,10 +26,11 @@
 import os
 from enum import Enum
 
-from pyworkflow.constants import PROD
+from pyworkflow.constants import PROD, SCIPION_DEBUG_NOCLEAN
 from pyworkflow.object import Set
 import pyworkflow.protocol.params as params
 import pyworkflow.utils.path as path
+from pyworkflow.utils import envVarOn
 from pyworkflow.protocol.constants import STEPS_PARALLEL
 from pwem.protocols import EMProtocol
 from tomo.protocols import ProtTomoBase
@@ -334,7 +335,7 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
                            " ".join(["-rx", inputFn, outputFn]))
 
         # Remove intermediate files. Necessary for big sets of tilt-series
-        if os.path.exists(outputFn):
+        if os.path.exists(outputFn) and not envVarOn(SCIPION_DEBUG_NOCLEAN):
             path.cleanPath(self._getTmpPath(tsId))
 
     def createOutputStep(self, tsObjId, tsId):
@@ -350,6 +351,7 @@ class ProtNovaCtfReconstruction(EMProtocol, ProtTomoBase):
             newTomogram.setLocation(outputFn)
             newTomogram.setTsId(tsId)
             newTomogram.setSamplingRate(self.getInputSamplingRate())
+            newTomogram.fixMRCVolume(self.getInputSamplingRate())
 
             # Set default tomogram origin
             newTomogram.setOrigin(newOrigin=None)
