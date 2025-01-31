@@ -149,6 +149,13 @@ class ProtNovaCtfDefocus(EMProtocol):
                       default=True,
                       label='Correct astigmatism?',
                       help='Correct for astigmatism in reconstruction.')
+        
+        form.addParam('invertDefocus',
+                      params.BooleanParam,
+                      label='Invert defocus gradient?',
+                      default=False,
+                      important=True,
+                      help="Invert the tilt angles for defocus calculation. Should only be used if you know that the defocus gradient is inverted with the current tilt axis angle. The default convention in IMOD corresponds to -1 defocus sign in RELION.See IMOD ctfplotter documentation for details.")
 
         form.addParallelSection(threads=4)
 
@@ -179,7 +186,7 @@ class ProtNovaCtfDefocus(EMProtocol):
         # Generate defocus file
         ctfTomoSeries = self.getCtfTomoSeriesFromTsId(tsId)
         defocusFile = self._getFileName("defocusFn", tsId=tsId)
-        imodUtils.generateDefocusIMODFileFromObject(ctfTomoSeries, defocusFile)
+        imodUtils.generateDefocusIMODFileFromObject(ctfTomoSeries=ctfTomoSeries, defocusFilePath=defocusFile, invertTiltAngles=self.invertDefocus)
 
     def computeDefocusStep(self, tsObjId, tsId):
         with self._lock:
