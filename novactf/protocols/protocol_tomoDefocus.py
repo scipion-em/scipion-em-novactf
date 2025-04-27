@@ -160,8 +160,8 @@ class ProtNovaCtfDefocus(EMProtocol):
         for ts in self.getInputTs().iterItems():
             tsId = ts.getTsId()
             objId = ts.getObjId()
-            self._insertFunctionStep(self.convertInputStep, objId, tsId)
-            self._insertFunctionStep(self.computeDefocusStep, objId, tsId)
+            self._insertFunctionStep(self.convertInputStep, objId, tsId, needsGPU=False)
+            self._insertFunctionStep(self.computeDefocusStep, objId, tsId, needsGPU=False)
 
     # --------------------------- STEPS functions -----------------------------
     def convertInputStep(self, tsObjId, tsId):
