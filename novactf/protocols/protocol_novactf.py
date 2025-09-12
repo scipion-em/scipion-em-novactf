@@ -25,23 +25,28 @@
 # *****************************************************************************
 import logging
 import traceback
+from enum import Enum
 from glob import glob
-from os.path import join
-
+from os.path import join, exists
 from imod import Plugin as ImodPlugin
 from imod.convert import genXfFile
 from pwem.emlib.image.image_readers import MRCImageReader
-from pyworkflow.constants import PROD
+from pyworkflow.constants import PROD, SCIPION_DEBUG_NOCLEAN
 import pyworkflow.protocol.params as params
 from pyworkflow.protocol.constants import STEPS_PARALLEL
-from pyworkflow.object import List, String
+from pyworkflow.object import List, String, Set
 from pwem.protocols import EMProtocol
 from imod import utils as imodUtils
 from novactf import Plugin
-from pyworkflow.utils import Message, cyanStr, makePath, redStr
+from pyworkflow.utils import Message, cyanStr, makePath, redStr, envVarOn, cleanPath
+from tomo.objects import Tomogram, SetOfTomograms
 from tomo.utils import getCommonTsAndCtfElements
 
 logger = logging.getLogger(__name__)
+
+
+class outputs(Enum):
+    Tomograms = SetOfTomograms
 
 
 class ProtNovaCtf(EMProtocol):
@@ -72,8 +77,9 @@ class ProtNovaCtf(EMProtocol):
     in the reconstruction.
     """
 
-    _label = 'compute defocus'
+    _label = 'compute defocus and reconstruct tomogram'
     _devStatus = PROD
+    _possibleOutputs = outputs
     stepsExecutionMode = STEPS_PARALLEL
 
     def __init__(self, **args):
@@ -99,51 +105,51 @@ class ProtNovaCtf(EMProtocol):
 
         group = form.addGroup('CTF')
         group.addParam('defocusStep', params.IntParam,
-                      default=15,
-                      label='Defocus step (nm)',
-                      help='The space between min and max in Z is sliced '
-                           'by defocus step. 15 nm is default step size. '
-                           'See Fig. 2 in Turonova et al., 2017 for optimal number.')
+                       default=15,
+                       label='Defocus step (nm)',
+                       help='The space between min and max in Z is sliced '
+                            'by defocus step. 15 nm is default step size. '
+                            'See Fig. 2 in Turonova et al., 2017 for optimal number.')
         group.addParam('correctionType', params.EnumParam,
-                      choices=['Phase flip', 'Multiplication'],
-                      default=0,
-                      label='Correction type',
-                      display=params.EnumParam.DISPLAY_HLIST,
-                      help='CTF correction type to be applied for the tilt-series. \n'
-                           ''
-                           '_Phase Flipping Method_: The phase information of the Fourier transform '
-                           'of the image is flipped by 180 degrees for those frequencies affected by '
-                           'the CTF. Then, the inverse Fourier transform is applied to obtaing the'
-                           'CTF corrected image.\n'
-                           '_Multiplication Method_: The Fourier transform of the image is multiplied'
-                           'by the CTF to attenuate the amplitudes of the frequencies affected by the '
-                           'CTF. Finally, the inverse Fourier transform is applied to reconstruct the '
-                           'corrected image.\n'
-                           'Difference:\n'
-                           '* Phase flipping directly modifies the phase information of the Fourier transform, '
-                           'while multiplication modifies the amplitudes.\n'
-                           '* Multiplication involves modeling and multiplication with a sinusoidal function, '
-                           'which can be more complex computationally.')
+                       choices=['Phase flip', 'Multiplication'],
+                       default=0,
+                       label='Correction type',
+                       display=params.EnumParam.DISPLAY_HLIST,
+                       help='CTF correction type to be applied for the tilt-series. \n'
+                            ''
+                            '_Phase Flipping Method_: The phase information of the Fourier transform '
+                            'of the image is flipped by 180 degrees for those frequencies affected by '
+                            'the CTF. Then, the inverse Fourier transform is applied to obtaing the'
+                            'CTF corrected image.\n'
+                            '_Multiplication Method_: The Fourier transform of the image is multiplied'
+                            'by the CTF to attenuate the amplitudes of the frequencies affected by the '
+                            'CTF. Finally, the inverse Fourier transform is applied to reconstruct the '
+                            'corrected image.\n'
+                            'Difference:\n'
+                            '* Phase flipping directly modifies the phase information of the Fourier transform, '
+                            'while multiplication modifies the amplitudes.\n'
+                            '* Multiplication involves modeling and multiplication with a sinusoidal function, '
+                            'which can be more complex computationally.')
         group.addParam('correctAstigmatism', params.BooleanParam,
-                      default=True,
-                      label='Correct astigmatism?',
-                      help='Correct for astigmatism in reconstruction.')
+                       default=True,
+                       label='Correct astigmatism?',
+                       help='Correct for astigmatism in reconstruction.')
 
         group = form.addGroup('Tomogram')
         group.addParam('tomoThickness', params.IntParam,
-                      default=400,
-                      label='Tomogram thickness (voxels)',
-                      help='Size of the tomogram in voxels in the Z axis (beam direction).')
+                       default=400,
+                       label='Tomogram thickness (voxels)',
+                       help='Size of the tomogram in voxels in the Z axis (beam direction).')
         group.addParam('tomoShift', params.IntParam,
-                      default=0,
-                      expertLevel=params.LEVEL_ADVANCED,
-                      label='Tomogram shift (voxels)',
-                      help='Shift of the tomogram in voxels in the Z direction. '
-                           'The shift should be set to zero even if for '
-                           'reconstruction we want to shift the tomogram in z! '
-                           'We assume the defocus to be estimated at the center '
-                           'of mass which should correspond to the shifted '
-                           'tomogram and thus here the shift should be zero.')
+                       default=0,
+                       expertLevel=params.LEVEL_ADVANCED,
+                       label='Tomogram shift (voxels)',
+                       help='Shift of the tomogram in voxels in the Z direction. '
+                            'The shift should be set to zero even if for '
+                            'reconstruction we want to shift the tomogram in z! '
+                            'We assume the defocus to be estimated at the center '
+                            'of mass which should correspond to the shifted '
+                            'tomogram and thus here the shift should be zero.')
 
         group = form.addGroup('Radial filtering',
                               help='This entry controls low-pass filtering with the radial weighting '
@@ -161,10 +167,25 @@ class ProtNovaCtf(EMProtocol):
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
+        closeSetDeps = []
         self._initialize()
         for tsId in self.tsDict.keys():
-            self._insertFunctionStep(self.convertInputStep, tsId, needsGPU=False)
-            self._insertFunctionStep(self.computeDefocusStep, tsId, needsGPU=False)
+            cInId = self._insertFunctionStep(self.convertInputStep, tsId,
+                                             prerequisites=[],
+                                             needsGPU=False)
+            cDefId = self._insertFunctionStep(self.computeDefocusStep, tsId,
+                                              prerequisites=cInId,
+                                              needsGPU=False)
+            recId = self._insertFunctionStep(self.computeReconstructionStep, tsId,
+                                             prerequisites=cDefId,
+                                             needsGPU=False)
+            cOutId = self._insertFunctionStep(self.createOutputStep, tsId,
+                                              prerequisites=recId,
+                                              needsGPU=False)
+            closeSetDeps.append(cOutId)
+        self._insertFunctionStep(self.closeOutputSetStep,
+                                 prerequisites=closeSetDeps,
+                                 needsGPU=False)
 
     # --------------------------- STEPS functions -----------------------------
     def _initialize(self):
@@ -261,7 +282,7 @@ class ProtNovaCtf(EMProtocol):
                 '-TILTFILE': tltFn,
                 '-CorrectionType': self.getCorrectionType(),
                 '-DefocusFileFormat': "imod",
-                '-CorrectAstigmatism': 1 if self.correctAstigmatism .get() else 0,
+                '-CorrectAstigmatism': 1 if self.correctAstigmatism.get() else 0,
                 '-PixelSize': self.getInputSamplingRate() / 10,
                 '-AmplitudeContrast': acq.getAmplitudeContrast(),
                 '-Cs': acq.getSphericalAberration(),
@@ -276,15 +297,16 @@ class ProtNovaCtf(EMProtocol):
 
                 # --------- Alignment step --------------------------------------------
                 if ts.hasAlignment():
-                    outFn = self._getAliStackTsFnByIndex(tsId, i)
+                    outAliFn = self._getAliStackTsFnByIndex(tsId, i)
                     paramsAlignment = {
                         "-input": outFn,
-                        "-output": outFn,
+                        "-output": outAliFn,
                         "-xform": self._getXfFn(tsId),
                         "-AdjustOrigin": "",
                         "-NearestNeighbor": "",
                         "-taper": "1,1"
                     }
+                    outFn = outAliFn
 
                     # Check if rotation angle is greater than 45º.
                     # If so, swap x and y dimensions to adapt output image
@@ -312,11 +334,94 @@ class ProtNovaCtf(EMProtocol):
 
                 Plugin.runNovactf(self, **paramsFilter)
 
-
-
         except Exception as e:
-            logger.error(redStr(f'tsId = {tsId} -> NovaCTF execution failed with the exception -> {e}'))
+            logger.error(redStr(f'tsId = {tsId} -> NovaCTF execution failed computing the defocus or processing the '
+                                f'intermediate stacks with the exception -> {e}'))
             logger.error(traceback.format_exc())
+
+    def computeReconstructionStep(self, tsId: str):
+        if tsId in self.failedItems:
+            return
+        try:
+            logger.info(f"tsId = {tsId} -> Reconstructing the tomogram...")
+            ts = self.tsDict[tsId]
+            with self._lock:
+                firstItem = ts.getFirstItem()
+            tsFn = firstItem.getFileName()
+            xDim, yDim, _, _ = MRCImageReader.getDimensions(tsFn)
+            acq = ts.getAcquisition()
+            rotationAngle = acq.getTiltAxisAngle()
+
+            # ----------- 3D CTF step ---------------------------------------------
+            recTomoFn = self._getRecTomoTmpFn(tsId)
+            params3dctf = {
+                "-Algorithm": "3dctf",
+                "-InputProjections": self._getFilterFn(tsId),
+                "-OutputFile": recTomoFn,
+                "-FULLIMAGE": f"{xDim},{yDim}",
+                "-TILTFILE": self._getTltFn(tsId),
+                "-THICKNESS": self.tomoThickness.get(),
+                "-SHIFT": f"0.0,{self.tomoShift.get()}",
+                "-PixelSize": self.getInputSamplingRate() / 10,
+                "-NumberOfInputStacks": self.getNumberOfStacks(tsId),
+                "-Use3DCTF": 1
+            }
+
+            # Check if rotation angle is greater than 45º.
+            # If so, swap x and y dimensions to adapt output image
+            # sizes to the final sample disposition.
+            if 45 < abs(rotationAngle) < 135:
+                params3dctf['-FULLIMAGE'] = f"{yDim},{xDim}"
+
+            Plugin.runNovactf(self, **params3dctf)
+
+            # ---------- Trim vol - rotate around X -------------------------------
+            finalTomoFn = self._getFinalRecTomoFn(tsId)
+            ImodPlugin.runImod(self, 'trimvol', " ".join(["-rx", recTomoFn, finalTomoFn]))
+
+            # Remove intermediate files. Necessary for big sets of tilt-series
+            if exists(finalTomoFn) and not envVarOn(SCIPION_DEBUG_NOCLEAN):
+                cleanPath(self._getTsIdTmpPath(tsId))
+        except Exception as e:
+            logger.error(redStr(f'tsId = {tsId} -> NovaCTF execution failed reconstructing the tomogram '
+                                f'with the exception -> {e}'))
+            logger.error(traceback.format_exc())
+
+    def createOutputStep(self, tsId: str):
+        if tsId is self.failedItems:
+            return
+        try:
+            finalTomoFn = self._getFinalRecTomoFn(tsId)
+            if exists(finalTomoFn):
+                inSRate = self.getInputSamplingRate()
+                ts = self.tsDict[tsId]
+                acq = ts.getAcquisition()
+                outputTomos = self._getOutputTomoSet()
+                newTomogram = Tomogram()
+                newTomogram.setFileName(finalTomoFn)
+                newTomogram.setTsId(tsId)
+                newTomogram.setSamplingRate(inSRate)
+                newTomogram.fixMRCVolume(inSRate)
+
+                # Set default tomogram origin
+                newTomogram.setOrigin(newOrigin=None)
+                newTomogram.setAcquisition(acq)
+
+                outputTomos.append(newTomogram)
+                outputTomos.write()
+                self._store()
+            else:
+                logger.error(redStr(f'tsId = {tsId} -> Output file {finalTomoFn} was not generated. Skipping... '))
+        except Exception as e:
+            logger.error(redStr(f'tsId = {tsId} -> Unable to register the output with exception {e}. Skipping... '))
+            logger.error(traceback.format_exc())
+
+    def closeOutputSetStep(self):
+        self._closeOutputSet()
+        outTomos = getattr(self, self._possibleOutputs.Tomograms.name, None)
+        if not outTomos or (outTomos and len(outTomos) == 0):
+            raise Exception(f'No output/s {outTomos} were generated. Please check the '
+                            f'Output Log > run.stdout and run.stderr')
 
     # --------------------------- INFO functions ------------------------------
     def _validate(self):
@@ -332,7 +437,7 @@ class ProtNovaCtf(EMProtocol):
     def _warnings(self):
         warnMsg = []
         ts = self.getInputTs().getFirstItem()
-        if not ts.getFirstItem.hasTransform():
+        if not ts.getFirstItem().hasTransform():
             warnMsg.append("The introduced tilt-series do not have alignment information.")
         return warnMsg
 
@@ -376,16 +481,16 @@ class ProtNovaCtf(EMProtocol):
         return join(self._getTsIdTmpPath(tsId), f'{tsId}.tlt')
 
     def _getDefocusFn(self, tsId: str) -> str:
-        return join(self._getTsIdResultsPath(tsId), f'{tsId}.defocus')
+        return join(self._getTsIdTmpPath(tsId), f'{tsId}.defocus')
 
     def _getDefocusShiftFn(self, tsId: str) -> str:
-        return join(self._getTsIdResultsPath(tsId), f'{tsId}.def_shift')
+        return join(self._getTsIdTmpPath(tsId), f'{tsId}.def_shift')
 
     def _getXfFn(self, tsId: str) -> str:
         return join(self._getTsIdTmpPath(tsId), f'{tsId}.xf')
 
     def _getDefocusFnByIndex(self, tsId: str, index: int) -> str:
-        return join(self._getTsIdResultsPath(tsId), f'{tsId}.defocus_{index}')
+        return join(self._getTsIdTmpPath(tsId), f'{tsId}.defocus_{index}')
 
     def _getStackTsFnByIndex(self, tsId: str, index: int) -> str:
         return join(self._getTsIdTmpPath(tsId), f'{tsId}.mrc_{index}')
@@ -396,6 +501,28 @@ class ProtNovaCtf(EMProtocol):
     def _getFlipStackFnByIndex(self, tsId: str, index: int) -> str:
         return join(self._getTsIdTmpPath(tsId), f'{tsId}_flip.mrc_{index}')
 
+    def _getFilterFn(self, tsId: str) -> str:
+        return join(self._getTsIdTmpPath(tsId), f'{tsId}_filter.mrc')
+
     def _getFilterStackFnByIndex(self, tsId: str, index: int) -> str:
         return join(self._getTsIdTmpPath(tsId), f'{tsId}_filter.mrc_{index}')
 
+    def _getRecTomoTmpFn(self, tsId: str) -> str:
+        return join(self._getTsIdTmpPath(tsId), f'{tsId}_rec.mrc')
+
+    def _getFinalRecTomoFn(self, tsId: str) -> str:
+        return join(self._getTsIdResultsPath(tsId), f'{tsId}.mrc')
+
+    def _getOutputTomoSet(self) -> SetOfTomograms:
+        outTomosAttribName = self._possibleOutputs.Tomograms.name
+        outTomos = getattr(self, outTomosAttribName, None)
+        if outTomos:
+            outTomos.enableAppend()
+        else:
+            outTomos = SetOfTomograms.create(self._getPath(), template='tomograms%s.sqlite')
+            outTomos.copyInfo(self.getInputTs())
+            outTomos.setStreamState(Set.STREAM_OPEN)
+            self._defineOutputs(**{outTomosAttribName: outTomos})
+            self._defineSourceRelation(self.inputSetOfTiltSeries, outTomos)
+
+        return outTomos
