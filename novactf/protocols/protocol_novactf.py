@@ -39,6 +39,7 @@ from pwem.protocols import EMProtocol
 from imod import utils as imodUtils
 from novactf import Plugin
 from pyworkflow.utils import Message, cyanStr, makePath, redStr, envVarOn, cleanPath
+from reliontomo.constants import tsMTsStarFields
 from tomo.objects import Tomogram, SetOfTomograms
 from tomo.utils import getCommonTsAndCtfElements
 
@@ -212,12 +213,21 @@ class ProtNovaCtf(EMProtocol):
             ts = self.tsDict[tsId]
             ctf = self.ctfDict[tsId]
             presentAcqOrders = getCommonTsAndCtfElements(ts, ctf)
+            if len(presentAcqOrders) == 0:
+                raise Exception(f'tsId = {tsId} -> No common acquisition orders found between the '
+                                f'tilt-series and the CTF.')
+
+            logger.info(cyanStr(f"tsId = {tsId} -> present acquisition orders in both "
+                                f"the tilt-series and the CTF are {presentAcqOrders}.'"))
             with self._lock:
                 firstItem = ts.getFirstItem()
 
             # Create the folders for the tilt series
             makePath(*[self._getTsIdResultsPath(tsId),
                        self._getTsIdTmpPath(tsId)])
+
+            # Re-stack if there are excluded views
+            ts.reStack(self._getTsTmpFileName(tsId), presentAcqOrders)
 
             # Generate the alignment file
             if firstItem.hasTransform():
@@ -242,9 +252,7 @@ class ProtNovaCtf(EMProtocol):
         try:
             logger.info(cyanStr(f'tsId ={tsId} -> Computing the defocus...'))
             ts = self.tsDict[tsId]
-            with self._lock:
-                firstItem = ts.getFirstItem()
-            tsFn = firstItem.getFileName()
+            tsFn = self._getTsTmpFileName(tsId)
             xDim, yDim, _, _ = MRCImageReader.getDimensions(tsFn)
             tltFn = self._getTltFn(tsId)
             paramsDefocus = {
@@ -278,7 +286,7 @@ class ProtNovaCtf(EMProtocol):
             nstacks = self.getNumberOfStacks(tsId)
             paramsCtfCorrection = {
                 '-Algorithm': "ctfCorrection",
-                '-InputProjections': firstItem.getFileName(),
+                '-InputProjections': tsFn,
                 '-TILTFILE': tltFn,
                 '-CorrectionType': self.getCorrectionType(),
                 '-DefocusFileFormat': "imod",
@@ -393,23 +401,24 @@ class ProtNovaCtf(EMProtocol):
         try:
             finalTomoFn = self._getFinalRecTomoFn(tsId)
             if exists(finalTomoFn):
-                inSRate = self.getInputSamplingRate()
-                ts = self.tsDict[tsId]
-                acq = ts.getAcquisition()
-                outputTomos = self._getOutputTomoSet()
-                newTomogram = Tomogram()
-                newTomogram.setFileName(finalTomoFn)
-                newTomogram.setTsId(tsId)
-                newTomogram.setSamplingRate(inSRate)
-                newTomogram.fixMRCVolume(inSRate)
+                with self._lock:
+                    inSRate = self.getInputSamplingRate()
+                    ts = self.tsDict[tsId]
+                    acq = ts.getAcquisition()
+                    outputTomos = self._getOutputTomoSet()
+                    newTomogram = Tomogram()
+                    newTomogram.setFileName(finalTomoFn)
+                    newTomogram.setTsId(tsId)
+                    newTomogram.setSamplingRate(inSRate)
+                    newTomogram.fixMRCVolume(inSRate)
 
-                # Set default tomogram origin
-                newTomogram.setOrigin(newOrigin=None)
-                newTomogram.setAcquisition(acq)
+                    # Set default tomogram origin
+                    newTomogram.setOrigin(newOrigin=None)
+                    newTomogram.setAcquisition(acq)
 
-                outputTomos.append(newTomogram)
-                outputTomos.write()
-                self._store()
+                    outputTomos.append(newTomogram)
+                    outputTomos.write()
+                    self._store()
             else:
                 logger.error(redStr(f'tsId = {tsId} -> Output file {finalTomoFn} was not generated. Skipping... '))
         except Exception as e:
@@ -476,6 +485,9 @@ class ProtNovaCtf(EMProtocol):
 
     def _getTsIdResultsPath(self, tsId: str) -> str:
         return self._getExtraPath(tsId)
+
+    def _getTsTmpFileName(self, tsId: str) -> str:
+        return join(self._getTsIdTmpPath(tsId), f'{tsId}.mrc')
 
     def _getTltFn(self, tsId: str) -> str:
         return join(self._getTsIdTmpPath(tsId), f'{tsId}.tlt')
