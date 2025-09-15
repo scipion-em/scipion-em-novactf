@@ -207,7 +207,7 @@ class ProtNovaCtf(EMProtocol):
         self.ctfDict = {ctf.getTsId(): ctf.clone(ignoreAttrs=[]) for ctf in inCtfs if ctf.getTsId() in matchingTsIds}
 
     def convertInputStep(self, tsId: str):
-        logger.info(cyanStr(f"tsId = {tsId} Generating tlt and defocus files...'"))
+        logger.info(cyanStr(f"tsId = {tsId} Generating the required files in IMOD format...'"))
         try:
             ts = self.tsDict[tsId]
             ctf = self.ctfDict[tsId]
@@ -342,6 +342,7 @@ class ProtNovaCtf(EMProtocol):
                 Plugin.runNovactf(self, **paramsFilter)
 
         except Exception as e:
+            self.failedItems.append(tsId)
             logger.error(redStr(f'tsId = {tsId} -> NovaCTF execution failed computing the defocus or processing the '
                                 f'intermediate stacks with the exception -> {e}'))
             logger.error(traceback.format_exc())
@@ -390,6 +391,7 @@ class ProtNovaCtf(EMProtocol):
             if exists(finalTomoFn) and not envVarOn(SCIPION_DEBUG_NOCLEAN):
                 cleanPath(self._getTsIdTmpPath(tsId))
         except Exception as e:
+            self.failedItems.append(tsId)
             logger.error(redStr(f'tsId = {tsId} -> NovaCTF execution failed reconstructing the tomogram '
                                 f'with the exception -> {e}'))
             logger.error(traceback.format_exc())
