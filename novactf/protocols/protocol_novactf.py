@@ -39,7 +39,6 @@ from pwem.protocols import EMProtocol
 from imod import utils as imodUtils
 from novactf import Plugin
 from pyworkflow.utils import Message, cyanStr, makePath, redStr, envVarOn, cleanPath
-from reliontomo.constants import tsMTsStarFields
 from tomo.objects import Tomogram, SetOfTomograms
 from tomo.utils import getCommonTsAndCtfElements
 
