@@ -98,7 +98,7 @@ class ProtNovaCtf(EMProtocol):
                       important=True,
                       label='Tilt-series')
         form.addParam('inputSetOfCtfTomoSeries', params.PointerParam,
-                      label="Associated CTF estimation",
+                      label="CTF",
                       pointerClass='SetOfCTFTomoSeries',
                       important=True,
                       help='CTF of the tilt-series.')
