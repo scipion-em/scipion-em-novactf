@@ -163,7 +163,7 @@ class ProtNovaCtf(EMProtocol):
         group.addParam('radialSecondParameter', params.FloatParam,
                        default=0.05, label='Gaussian fall-off')
 
-        form.addParallelSection(threads=4)
+        form.addParallelSection(threads=1)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
