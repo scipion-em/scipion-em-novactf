@@ -44,6 +44,10 @@ from tomo.utils import getCommonTsAndCtfElements
 
 logger = logging.getLogger(__name__)
 
+# Correction type
+PHASE_FLIP = 0
+MULTIPLICATION = 1
+
 
 class outputs(Enum):
     Tomograms = SetOfTomograms
@@ -112,7 +116,7 @@ class ProtNovaCtf(EMProtocol):
                             'See Fig. 2 in Turonova et al., 2017 for optimal number.')
         group.addParam('correctionType', params.EnumParam,
                        choices=['Phase flip', 'Multiplication'],
-                       default=0,
+                       default=PHASE_FLIP,
                        label='Correction type',
                        display=params.EnumParam.DISPLAY_HLIST,
                        help='CTF correction type to be applied for the tilt-series. \n'
@@ -137,7 +141,7 @@ class ProtNovaCtf(EMProtocol):
 
         group = form.addGroup('Tomogram')
         group.addParam('tomoThickness', params.IntParam,
-                       default=400,
+                       default=300,
                        label='Tomogram thickness (voxels)',
                        help='Size of the tomogram in voxels in the Z axis (beam direction).')
         group.addParam('tomoShift', params.IntParam,
@@ -163,7 +167,7 @@ class ProtNovaCtf(EMProtocol):
         group.addParam('radialSecondParameter', params.FloatParam,
                        default=0.05, label='Gaussian fall-off')
 
-        form.addParallelSection(threads=1)
+        form.addParallelSection(threads=3)
 
     # -------------------------- INSERT steps functions -----------------------
     def _insertAllSteps(self):
@@ -479,7 +483,7 @@ class ProtNovaCtf(EMProtocol):
         return self.getInputTs().getSamplingRate()
 
     def getCorrectionType(self):
-        return "phaseflip" if self.correctionType.get() == 0 else "multiplication"
+        return "phaseflip" if self.correctionType.get() == PHASE_FLIP else "multiplication"
 
     def _getTsIdTmpPath(self, tsId: str) -> str:
         return self._getTmpPath(tsId)

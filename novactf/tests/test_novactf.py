@@ -22,16 +22,17 @@
 # *  e-mail address 'scipion-users@lists.sourceforge.net'
 # *
 # **************************************************************************
-from typing import Union
-
+from typing import Union, Tuple, Dict, List
+import numpy as np
 from cistem.protocols import CistemProtTsCtffind
 from imod.constants import OUTPUT_TILTSERIES_NAME
 from imod.protocols import ProtImodImportTransformationMatrix, ProtImodTsNormalization, ProtImodExcludeViews
 from imod.protocols.protocol_base_preprocess import FLOAT_DENSITIES_CHOICES
 from novactf.protocols import ProtNovaCtf
+from novactf.protocols.protocol_novactf import PHASE_FLIP, MULTIPLICATION
 from pyworkflow.tests import setupTestProject, DataSet
 from pyworkflow.utils import cyanStr, magentaStr
-from tomo.objects import SetOfTiltSeries, SetOfCTFTomoSeries
+from tomo.objects import SetOfTiltSeries, SetOfCTFTomoSeries, SetOfTomograms, TomoAcquisition, TiltSeries, CTFTomoSeries
 from tomo.protocols import ProtImportTs, ProtImportTsCTF
 from tomo.protocols.protocol_import_ctf import ImportChoice
 from tomo.tests import RE4_STA_TUTO, TS_03, TS_54, DataSetRe4STATuto
@@ -43,6 +44,7 @@ class TestNovaCtf(TestBaseCentralizedLayer):
     importedTomos = None
     unbinnedSRate = DataSetRe4STATuto.unbinnedPixSize.value
     expectedTsSetSize = 2
+    binningFactor = 4
     UNMODIFIED = 'unmodified'
     EXC_VIEWS = 'exc. views'
     RE_STACKED = 're-stacked'
@@ -63,25 +65,12 @@ class TestNovaCtf(TestBaseCentralizedLayer):
         TS_03: DataSetRe4STATuto.testAcq03.value,
         TS_54: DataSetRe4STATuto.testAcq54.value,
     }
-    #
-    # testInterpAcqObjDict = {
-    #     TS_03: DataSetRe4STATuto.testAcq03Interp.value,
-    #     TS_54: DataSetRe4STATuto.testAcq54Interp.value,
-    # }
-    #
-    # anglesCountDict = {
-    #     TS_03: 40,
-    #     TS_54: 41,
-    # }
+
     # Excluded views stuff
     excludedViewsDict = {
         TS_03: [0, 38, 39],
         TS_54: [0, 1, 38, 39, 40]
     }
-    # anglesCountDictExcluded = {
-    #     TS_03: 37,
-    #     TS_54: 36,
-    # }
 
     @classmethod
     def setUpClass(cls):
@@ -180,7 +169,7 @@ class TestNovaCtf(TestBaseCentralizedLayer):
         return tsPreprocessed
 
     @classmethod
-    def _runPrevProts(cls, importCtf=True):
+    def _runPrevProts(cls, importCtf: bool = True) -> Tuple[SetOfCTFTomoSeries, SetOfTiltSeries]:
         importedCtfs = None
         if importCtf:
             importedCtfs = cls._runImportCtf(cls.importedTs)
@@ -189,30 +178,7 @@ class TestNovaCtf(TestBaseCentralizedLayer):
         return importedCtfs, tsWithAliBin4
 
     @classmethod
-    def _gentestAcqObjDictReStacked(cls, ts03MinAngle=-999, ts03MaxAngle=999, ts54MinAngle=-999, ts54MaxAngle=999):
-        # The angle min and angle max for the re-stacked TS, as these values may change if the
-        # removed tilt-images are the first or the last, for example. FGor the CTF correction, the tilt
-        # axis angle and the initial and accum dose will be always 0.
-        testAcqObjDictReStacked = {}
-        acq_TS_03 = cls.testAcqObjDict[TS_03].clone()
-        acq_TS_03.setDoseInitial(0)
-        acq_TS_03.setAccumDose(0)
-        acq_TS_03.setTiltAxisAngle(0)
-        acq_TS_03.setAngleMin(ts03MinAngle)
-        acq_TS_03.setAngleMax(ts03MaxAngle)
-        testAcqObjDictReStacked[TS_03] = acq_TS_03
-
-        acq_TS_54 = cls.testAcqObjDict[TS_54].clone()
-        acq_TS_54.setDoseInitial(0)
-        acq_TS_54.setAccumDose(0)
-        acq_TS_54.setTiltAxisAngle(0)
-        acq_TS_54.setAngleMin(ts54MinAngle)
-        acq_TS_54.setAngleMax(ts54MaxAngle)
-        testAcqObjDictReStacked[TS_54] = acq_TS_54
-        return testAcqObjDictReStacked
-
-    @classmethod
-    def _runCistemEstimateCtf(cls, inTsSet):
+    def _runCistemEstimateCtf(cls, inTsSet: SetOfTiltSeries) -> SetOfCTFTomoSeries:
         print(magentaStr("\n==> Estimating the CTF with Cistem:"))
         protEstimateCtf = cls.newProtocol(CistemProtTsCtffind,
                                           inputTiltSeries=inTsSet,
@@ -224,8 +190,12 @@ class TestNovaCtf(TestBaseCentralizedLayer):
         ctfs = getattr(protEstimateCtf, CistemProtTsCtffind._possibleOutputs.CTFs.name, None)
         return ctfs
 
+    @staticmethod
+    def _getCorrectionTypeStr(correctionType: int) -> str:
+        return "phaseflip" if correctionType == PHASE_FLIP else "multiplication"
+
     @classmethod
-    def _genReStackedCtf(cls):
+    def _genReStackedCtf(cls) -> SetOfCTFTomoSeries:
         importedTs = cls._runImportTs()
         # Exclude some views from the TS at metadata level
         cls._excludeSetViews(importedTs, excludedViewsDict=cls.ctfExcludedViewsDict)
@@ -235,7 +205,8 @@ class TestNovaCtf(TestBaseCentralizedLayer):
         return cls._runCistemEstimateCtf(reStackedTsSet)
 
     @classmethod
-    def _excludeSetViews(cls, inSet: Union[SetOfTiltSeries, SetOfCTFTomoSeries],
+    def _excludeSetViews(cls,
+                         inSet: Union[SetOfTiltSeries, SetOfCTFTomoSeries],
                          excludedViewsDict: Union[dict, None] = None) -> None:
         if not excludedViewsDict:
             excludedViewsDict = cls.excludedViewsDict
@@ -244,7 +215,9 @@ class TestNovaCtf(TestBaseCentralizedLayer):
             cls._excIntermediateSetViews(inSet, obj, excludedViewsDict[obj.getTsId()])
 
     @staticmethod
-    def _excIntermediateSetViews(inSet, obj, excludedViewsList):
+    def _excIntermediateSetViews(inSet: Union[SetOfTiltSeries, SetOfCTFTomoSeries],
+                                 obj: Union[TiltSeries, CTFTomoSeries],
+                                 excludedViewsList: List[int]) -> None:
         tiList = [ti.clone() for ti in obj]
         for i, ti in enumerate(tiList):
             if i in excludedViewsList:
@@ -256,7 +229,9 @@ class TestNovaCtf(TestBaseCentralizedLayer):
         inSet.close()
 
     @classmethod
-    def _runExcludeViewsProt(cls, inTsSet, objLabel=None):
+    def _runExcludeViewsProt(cls,
+                             inTsSet: SetOfTiltSeries,
+                             objLabel: str = None) -> SetOfTiltSeries:
         print(magentaStr("\n==> Running the TS exclusion of views:"))
         protExcViews = cls.newProtocol(ProtImodExcludeViews, inputSetOfTiltSeries=inTsSet)
         if objLabel:
@@ -265,156 +240,173 @@ class TestNovaCtf(TestBaseCentralizedLayer):
         outTsSet = getattr(protExcViews, OUTPUT_TILTSERIES_NAME, None)
         return outTsSet
 
+    def _checkTomos(self,
+                    inTomos: SetOfTomograms,
+                    tomoThickness: int,
+                    expectedOriginShifts: List[float] = None) -> None:
+        binnedSRate = self.unbinnedSRate * self.binningFactor
+        testOriginShifts = expectedOriginShifts
+        expectedTomoDims = [960, 928]
+        expectedTomoDims.extend([tomoThickness])
+        if expectedOriginShifts:
+            testOriginShifts = - np.array(expectedTomoDims) * binnedSRate / 2
+            testOriginShifts[0] -= expectedOriginShifts[0] * binnedSRate
+            testOriginShifts[2] -= expectedOriginShifts[1] * binnedSRate
+        self.checkTomograms(inTomos,
+                            expectedSetSize=len(self.testAcqObjDict),
+                            expectedSRate=binnedSRate,
+                            expectedDimensions=expectedTomoDims,
+                            expectedOriginShifts=testOriginShifts,
+                            isHeterogeneousSet=False,
+                            testAcqObj=self.testAcqObjDict)
+
     @classmethod
     def _runNovaCtf(cls,
                     inTsSet: SetOfTiltSeries,
                     inCtfSet: SetOfCTFTomoSeries,
+                    correctionType: int,
+                    tomoThickness: int,
                     tsSetMsg: str,
-                    ctfSetMsg: str, defocusTol=200, interpWidth=15):
-        print(magentaStr(f"\n==> Running the CTF correction:"
+                    ctfSetMsg: str) -> Union[SetOfTomograms, None]:
+        print(magentaStr(f"\n==> Running the NovaCTF:"
                          f"\n\t- Tilt-series = {tsSetMsg}"
-                         f"\n\t- CTFs: {ctfSetMsg}"))
+                         f"\n\t- CTFs: {ctfSetMsg}"
+                         f"\n\t- Correction type: {cls._getCorrectionTypeStr(correctionType)}"
+                         f"\n\t- Tomogram thickness: {tomoThickness}"))
         protNovaCtf = cls.newProtocol(ProtNovaCtf,
                                       inputSetOfTiltSeries=inTsSet,
                                       inputSetOfCtfTomoSeries=inCtfSet,
+                                      correctionType=correctionType,
+                                      tomoThickness=tomoThickness)
+        objLabel = f'ts {tsSetMsg}, ctf {ctfSetMsg}'
+        protNovaCtf.setObjLabel(objLabel)
+        cls.launchProtocol(protNovaCtf)
+        outTsSet = getattr(protNovaCtf, protNovaCtf._possibleOutputs.Tomograms.name, None)
+        return outTsSet
 
-                                      )
-
-    def testCtfCorrection01(self):
+    def testNovaCtf01(self):
+        thk = 300
         importedCtfs, tsWithAliBin4 = self._runPrevProts()
-        tsSetCtfCorr = self._runCtfCorrection(tsWithAliBin4, importedCtfs,
-                                              tsSetMsg=self.UNMODIFIED,
-                                              ctfSetMsg=self.UNMODIFIED)
-        self._checkInterpTs(tsSetCtfCorr,
-                            testAcqObjDict=self.testInterpAcqObjDict,
-                            anglesCountDict=self.anglesCountDict)
+        tsSetCtfCorr = self._runNovaCtf(tsWithAliBin4,
+                                        importedCtfs,
+                                        correctionType=PHASE_FLIP,
+                                        tomoThickness=thk,
+                                        tsSetMsg=self.UNMODIFIED,
+                                        ctfSetMsg=self.UNMODIFIED)
+        self._checkTomos(tsSetCtfCorr, tomoThickness=thk)
 
-    def testCtfCorrection02(self):
+    def testNovaCtf02(self):
+        thk = 340
         importedCtfs, tsWithAliBin4 = self._runPrevProts()
         self._excludeSetViews(importedCtfs,
                               excludedViewsDict=self.ctfExcludedViewsDict)  # Excluded some views in the CTF at metadata level
-        tsSetCtfCorr = self._runCtfCorrection(tsWithAliBin4, importedCtfs,
-                                              tsSetMsg=self.UNMODIFIED,
-                                              ctfSetMsg=self.EXC_VIEWS)
+        tsSetCtfCorr = self._runNovaCtf(tsWithAliBin4,
+                                        importedCtfs,
+                                        correctionType=MULTIPLICATION,
+                                        tomoThickness=thk,
+                                        tsSetMsg=self.UNMODIFIED,
+                                        ctfSetMsg=self.EXC_VIEWS)
         # Check the results
-        testAcqObjDict = self._gentestAcqObjDictReStacked(ts03MinAngle=-51,
-                                                          ts03MaxAngle=54,
-                                                          ts54MinAngle=-57,
-                                                          ts54MaxAngle=54)
-        self._checkInterpTs(tsSetCtfCorr,
-                            testAcqObjDict=testAcqObjDict,
-                            anglesCountDict=self.ctfAnglesCountDictExcluded)
+        self._checkTomos(tsSetCtfCorr, tomoThickness=thk)
 
-    def testCtfCorrection03(self):
+    def testNovaCtf03(self):
+        thk = 280
         importedCtfs, tsWithAliBin4 = self._runPrevProts()
         self._excludeSetViews(tsWithAliBin4)  # Excluded some views in the TS at metadata level
-        tsSetCtfCorr = self._runCtfCorrection(tsWithAliBin4, importedCtfs,
-                                              tsSetMsg=self.EXC_VIEWS,
-                                              ctfSetMsg=self.UNMODIFIED)
+        tsSetCtfCorr = self._runNovaCtf(tsWithAliBin4,
+                                        importedCtfs,
+                                        correctionType=PHASE_FLIP,
+                                        tomoThickness=thk,
+                                        tsSetMsg=self.EXC_VIEWS,
+                                        ctfSetMsg=self.UNMODIFIED)
         # Check the results
-        testAcqObjDict = self._gentestAcqObjDictReStacked(ts03MinAngle=-54,
-                                                          ts03MaxAngle=54,
-                                                          ts54MinAngle=-54,
-                                                          ts54MaxAngle=51)
-        self._checkInterpTs(tsSetCtfCorr,
-                            testAcqObjDict=testAcqObjDict,
-                            anglesCountDict=self.anglesCountDictExcluded)
+        self._checkTomos(tsSetCtfCorr, tomoThickness=thk)
 
-    def testCtfCorrection04(self):
+    #
+    def testNovaCtf04(self):
+        thk = 300
         importedCtfs, tsWithAliBin4 = self._runPrevProts()
         self._excludeSetViews(tsWithAliBin4)  # Excluded some views in the TS at metadata level
         tsSetReStacked = self._runExcludeViewsProt(tsWithAliBin4)  # Re-stack the TS
-        tsSetCtfCorr = self._runCtfCorrection(tsSetReStacked, importedCtfs,
-                                              tsSetMsg=self.RE_STACKED,
-                                              ctfSetMsg=self.UNMODIFIED)
+        tsSetCtfCorr = self._runNovaCtf(tsSetReStacked,
+                                        importedCtfs,
+                                        correctionType=PHASE_FLIP,
+                                        tomoThickness=thk,
+                                        tsSetMsg=self.RE_STACKED,
+                                        ctfSetMsg=self.UNMODIFIED)
         # Check the results
-        testAcqObjDict = self._gentestAcqObjDictReStacked(ts03MinAngle=-54,
-                                                          ts03MaxAngle=54,
-                                                          ts54MinAngle=-54,
-                                                          ts54MaxAngle=51)
-        self._checkInterpTs(tsSetCtfCorr,
-                            testAcqObjDict=testAcqObjDict,
-                            anglesCountDict=self.anglesCountDictExcluded)
+        self._checkTomos(tsSetCtfCorr, tomoThickness=thk)
 
-    def testCtfCorrection05(self):
+    def testNovaCtf05(self):
+        thk = 240
         importedCtfs, tsWithAliBin4 = self._runPrevProts()
         self._excludeSetViews(tsWithAliBin4)  # Excluded some views in the TS at metadata level
         self._excludeSetViews(tsWithAliBin4,
                               excludedViewsDict=self.ctfExcludedViewsDict)  # Excluded some views in the CTF at metadata level
-        tsSetCtfCorr = self._runCtfCorrection(tsWithAliBin4, importedCtfs,
-                                              tsSetMsg=self.EXC_VIEWS,
-                                              ctfSetMsg=self.EXC_VIEWS)
+        tsSetCtfCorr = self._runNovaCtf(tsWithAliBin4,
+                                        importedCtfs,
+                                        correctionType=PHASE_FLIP,
+                                        tomoThickness=thk,
+                                        tsSetMsg=self.EXC_VIEWS,
+                                        ctfSetMsg=self.EXC_VIEWS)
         # Check the results
-        testAcqObjDict = self._gentestAcqObjDictReStacked(ts03MinAngle=-51,
-                                                          ts03MaxAngle=54,
-                                                          ts54MinAngle=-54,
-                                                          ts54MaxAngle=51)
-        self._checkInterpTs(tsSetCtfCorr,
-                            testAcqObjDict=testAcqObjDict,
-                            anglesCountDict=self.intersectAnglesCountDictExcluded)
+        self._checkTomos(tsSetCtfCorr, tomoThickness=thk)
 
-    def testCtfCorrection06(self):
+    def testNovaCtf06(self):
+        thk = 200
         importedCtfs, tsWithAliBin4 = self._runPrevProts()
         self._excludeSetViews(tsWithAliBin4)  # Excluded some views in the TS at metadata level
         tsSetReStacked = self._runExcludeViewsProt(tsWithAliBin4)  # Re-stack the TS
         self._excludeSetViews(importedCtfs,
                               excludedViewsDict=self.ctfExcludedViewsDict)  # Excluded some views in the CTF at metadata level
-        tsSetCtfCorr = self._runCtfCorrection(tsSetReStacked, importedCtfs,
-                                              tsSetMsg=self.RE_STACKED,
-                                              ctfSetMsg=self.EXC_VIEWS)
+        tsSetCtfCorr = self._runNovaCtf(tsSetReStacked,
+                                        importedCtfs,
+                                        correctionType=MULTIPLICATION,
+                                        tomoThickness=thk,
+                                        tsSetMsg=self.RE_STACKED,
+                                        ctfSetMsg=self.EXC_VIEWS)
         # Check the results
-        testAcqObjDict = self._gentestAcqObjDictReStacked(ts03MinAngle=-51,
-                                                          ts03MaxAngle=54,
-                                                          ts54MinAngle=-54,
-                                                          ts54MaxAngle=51)
-        self._checkInterpTs(tsSetCtfCorr,
-                            testAcqObjDict=testAcqObjDict,
-                            anglesCountDict=self.intersectAnglesCountDictExcluded)
+        self._checkTomos(tsSetCtfCorr, tomoThickness=thk)
 
-    def testCtfCorrection07(self):
+    def testNovaCtf07(self):
+        thk = 320
         _, tsWithAliBin4 = self._runPrevProts(importCtf=False)
         ctfSetReStacked = self._genReStackedCtf()  # Gen a CTF estimated on a re-stacked TS
-        tsSetCtfCorr = self._runCtfCorrection(tsWithAliBin4, ctfSetReStacked,
-                                              tsSetMsg=self.UNMODIFIED,
-                                              ctfSetMsg=self.RE_STACKED)
+        tsSetCtfCorr = self._runNovaCtf(tsWithAliBin4,
+                                        ctfSetReStacked,
+                                        correctionType=PHASE_FLIP,
+                                        tomoThickness=thk,
+                                        tsSetMsg=self.UNMODIFIED,
+                                        ctfSetMsg=self.RE_STACKED)
         # Check the results
-        testAcqObjDict = self._gentestAcqObjDictReStacked(ts03MinAngle=-51,
-                                                          ts03MaxAngle=54,
-                                                          ts54MinAngle=-57,
-                                                          ts54MaxAngle=54)
-        self._checkInterpTs(tsSetCtfCorr,
-                            testAcqObjDict=testAcqObjDict,
-                            anglesCountDict=self.ctfAnglesCountDictExcluded)
+        self._checkTomos(tsSetCtfCorr, tomoThickness=thk)
 
-    def testCtfCorrection08(self):
+    def testNovaCtf08(self):
+        thk = 300
         _, tsWithAliBin4 = self._runPrevProts(importCtf=False)
         self._excludeSetViews(tsWithAliBin4)  # Excluded some views in the TS at metadata level
         ctfSetReStacked = self._genReStackedCtf()  # Gen a CTF estimated on a re-stacked TS
-        tsSetCtfCorr = self._runCtfCorrection(tsWithAliBin4, ctfSetReStacked,
-                                              tsSetMsg=self.EXC_VIEWS,
-                                              ctfSetMsg=self.RE_STACKED)
+        tsSetCtfCorr = self._runNovaCtf(tsWithAliBin4,
+                                        ctfSetReStacked,
+                                        correctionType=PHASE_FLIP,
+                                        tomoThickness=thk,
+                                        tsSetMsg=self.EXC_VIEWS,
+                                        ctfSetMsg=self.RE_STACKED)
         # Check the results
-        testAcqObjDict = self._gentestAcqObjDictReStacked(ts03MinAngle=-51,
-                                                          ts03MaxAngle=54,
-                                                          ts54MinAngle=-54,
-                                                          ts54MaxAngle=51)
-        self._checkInterpTs(tsSetCtfCorr,
-                            testAcqObjDict=testAcqObjDict,
-                            anglesCountDict=self.intersectAnglesCountDictExcluded)
+        self._checkTomos(tsSetCtfCorr, tomoThickness=thk)
 
-    def testCtfCorrection09(self):
+    def testNovaCtf09(self):
+        thk = 260
         _, tsWithAliBin4 = self._runPrevProts(importCtf=False)
         self._excludeSetViews(tsWithAliBin4)  # Excluded some views in the TS at metadata level
         tsSetReStacked = self._runExcludeViewsProt(tsWithAliBin4)  # Re-stack the TS
         ctfSetReStacked = self._genReStackedCtf()  # Gen a CTF estimated on a re-stacked TS
-        tsSetCtfCorr = self._runCtfCorrection(tsSetReStacked, ctfSetReStacked,
-                                              tsSetMsg=self.RE_STACKED,
-                                              ctfSetMsg=self.RE_STACKED)
+        tsSetCtfCorr = self._runNovaCtf(tsSetReStacked,
+                                        ctfSetReStacked,
+                                        correctionType=PHASE_FLIP,
+                                        tomoThickness=thk,
+                                        tsSetMsg=self.RE_STACKED,
+                                        ctfSetMsg=self.RE_STACKED)
         # Check the results
-        testAcqObjDict = self._gentestAcqObjDictReStacked(ts03MinAngle=-51,
-                                                          ts03MaxAngle=54,
-                                                          ts54MinAngle=-54,
-                                                          ts54MaxAngle=51)
-        self._checkInterpTs(tsSetCtfCorr,
-                            testAcqObjDict=testAcqObjDict,
-                            anglesCountDict=self.intersectAnglesCountDictExcluded)
+        # Check the results
+        self._checkTomos(tsSetCtfCorr, tomoThickness=thk)
