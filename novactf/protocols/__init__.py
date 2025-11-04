@@ -23,6 +23,5 @@
 # *  e-mail address 'scipion@cnb.csic.es'
 # *
 # *****************************************************************************
+from .protocol_novactf import ProtNovaCtf
 
-from .protocol_tomoDefocus import ProtNovaCtfDefocus
-from .protocol_tomoReconstruction import ProtNovaCtfReconstruction
