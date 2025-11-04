@@ -215,6 +215,7 @@ class ProtNovaCtf(EMProtocol):
         try:
             ts = self.tsDict[tsId]
             ctf = self.ctfDict[tsId]
+            firstTi = ts.getFirstItem()
             presentAcqOrders = getCommonTsAndCtfElements(ts, ctf)
             if len(presentAcqOrders) == 0:
                 raise Exception(f'tsId = {tsId} -> No common acquisition orders found between the '
@@ -222,18 +223,16 @@ class ProtNovaCtf(EMProtocol):
 
             logger.info(cyanStr(f"tsId = {tsId} -> present acquisition orders in both "
                                 f"the tilt-series and the CTF are {presentAcqOrders}.'"))
-            with self._lock:
-                firstItem = ts.getFirstItem()
 
             # Create the folders for the tilt series
             makePath(*[self._getTsIdResultsPath(tsId),
                        self._getTsIdTmpPath(tsId)])
 
             # Re-stack if there are excluded views
-            ts.reStack(self._getTsTmpFileName(tsId), presentAcqOrders)
+            ts.reStack(firstTi.getFileName(), self._getTsTmpFileName(tsId), presentAcqOrders)
 
             # Generate the alignment file
-            if firstItem.hasTransform():
+            if ts.hasAlignment():
                 xfFn = self._getXfFn(tsId)
                 genXfFile(ts, xfFn, presentAcqOrders=presentAcqOrders)
 
@@ -451,7 +450,7 @@ class ProtNovaCtf(EMProtocol):
     def _warnings(self):
         warnMsg = []
         ts = self.getInputTs().getFirstItem()
-        if not ts.getFirstItem().hasTransform():
+        if not ts.hasAlignment():
             warnMsg.append("The introduced tilt-series do not have alignment information.")
         return warnMsg
 
