@@ -215,7 +215,6 @@ class ProtNovaCtf(EMProtocol):
         try:
             ts = self.tsDict[tsId]
             ctf = self.ctfDict[tsId]
-            firstTi = ts.getFirstItem()
             presentAcqOrders = getCommonTsAndCtfElements(ts, ctf)
             if len(presentAcqOrders) == 0:
                 raise Exception(f'tsId = {tsId} -> No common acquisition orders found between the '
@@ -229,6 +228,8 @@ class ProtNovaCtf(EMProtocol):
                        self._getTsIdTmpPath(tsId)])
 
             # Re-stack if there are excluded views
+            with self._lock:
+                firstTi = ts.getFirstEnabledItem()
             ts.reStack(firstTi.getFileName(), self._getTsTmpFileName(tsId), presentAcqOrders)
 
             # Generate the alignment file
@@ -439,7 +440,7 @@ class ProtNovaCtf(EMProtocol):
     # --------------------------- INFO functions ------------------------------
     def _validate(self):
         validateMsgs = []
-        ctf = self.getInputCtf().getFirstItem()
+        ctf = self.getInputCtf().getFirstEnabledItem()
         if hasattr(ctf, "_IMODDefocusFileFlag"):
             defFlag = ctf.getIMODDefocusFileFlag()
             if defFlag in [0, 4] and self.correctAstigmatism:
@@ -449,7 +450,7 @@ class ProtNovaCtf(EMProtocol):
 
     def _warnings(self):
         warnMsg = []
-        ts = self.getInputTs().getFirstItem()
+        ts = self.getInputTs().getFirstEnabledItem()
         if not ts.hasAlignment():
             warnMsg.append("The introduced tilt-series do not have alignment information.")
         return warnMsg
