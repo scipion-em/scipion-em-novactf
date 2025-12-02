@@ -440,7 +440,8 @@ class ProtNovaCtf(EMProtocol):
     # --------------------------- INFO functions ------------------------------
     def _validate(self):
         validateMsgs = []
-        ctf = self.getInputCtf().getFirstEnabledItem()
+        ctfSet = self.getInputCtf()
+        ctf = ctfSet.getFirstItem()
         if hasattr(ctf, "_IMODDefocusFileFlag"):
             defFlag = ctf.getIMODDefocusFileFlag()
             if defFlag in [0, 4] and self.correctAstigmatism:
@@ -450,7 +451,8 @@ class ProtNovaCtf(EMProtocol):
 
     def _warnings(self):
         warnMsg = []
-        ts = self.getInputTs().getFirstEnabledItem()
+        tsSet = self.getInputTs()
+        ts = tsSet.getFirstItem()
         if not ts.hasAlignment():
             warnMsg.append("The introduced tilt-series do not have alignment information.")
         return warnMsg
