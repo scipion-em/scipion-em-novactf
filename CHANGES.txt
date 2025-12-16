@@ -1,3 +1,11 @@
+4.0.0:
+ Users:
+  - Protocols unified into a single one.
+  - Add excluded views management.
+ Developers:
+  - Fix test, relax installation requirements for folders or libraries, fix output tomo sampling
+  - Fix streaming condition to insert the closing step. Now it uses collections.Counter when comparing
+    the tsId lists instead of direct comparison, which is order-sensitive.
 3.2.1: Adding a main help to the protocols and some minor modifications in the helps of the parameters
 3.2: refactoring of both protocols
 3.1.3: do not trigger reconstruction protocol, add possible outputs

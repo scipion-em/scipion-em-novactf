@@ -28,7 +28,7 @@ import os.path
 import pwem
 
 
-__version__ = '3.2.1'
+__version__ = '4.0.0'
 _references = ["Turonova2017"]
 NOVACTF_HOME = 'NOVACTF_HOME'
 
@@ -47,7 +47,7 @@ class Plugin(pwem.Plugin):
 
     @classmethod
     def getDependencies(cls):
-        neededPrograms = ['wget', 'unzip', 'fftw3', 'fftw3f', 'lib64', 'gcc']
+        neededPrograms = ['wget', 'unzip', 'gcc']  # ,'lib64', 'fftw3', 'fftw3f',]
 
         return neededPrograms
 
