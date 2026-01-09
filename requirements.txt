@@ -1,4 +1,3 @@
-scipion-em
-scipion-pyworkflow
-scipion-em-tomo
-scipion-em-imod
+scipion-pyworkflow @ git+https://github.com/scipion-em/scipion-pyworkflow.git@v3.11.3
+scipion-em-tomo @ git+https://github.com/scipion-em/scipion-em-tomo.git@v3.11.2
+scipion-em-imod @git+https://github.com/scipion-em/scipion-em-tomo.git@v3.8.0
