@@ -55,30 +55,178 @@ class outputs(Enum):
 
 class ProtNovaCtf(EMProtocol):
     """
-    Compute defocus for each tilt-image with novaCTF. This is a metaprotocol
-    and automatically will trigger novaCTf - 3D CTF correction and reconstruction
+    Computes local CTF-corrected tomographic reconstructions from tilt-series
+    and corresponding CTF estimations using NovaCTF. The protocol performs
+    defocus-gradient correction and weighted back projection reconstruction
+    to improve tomogram quality and enhance downstream subtomogram averaging
+    analyses. More info: https://github.com/turonova/novaCTF
 
-    More info:
-            https://github.com/turonova/novaCTF
+    AI Generated:
 
-    NovaCTF is a tomogram reconstruction algorithm that allows a local CTF correction using
-    the weighted back projection (WBP) algorithm. This local CTF correction enhances the
-    quality of the tomogram leading to a higher resolution in subtomogram averaging.\n
+    NovaCTF Tomogram Reconstruction (ProtNovaCtf) — User Manual
+        Overview
 
-    NovaCTF is an efficient implementation of G.J. Jensen, R.D. Kornberg, "Defocus-gradient
-    corrected backprojection", Ultramicroscopy, 84, 57-64, (2000). This algorithm uses multiple CTF
-    corrections to reconstruct the tomogram via WBP to have a local CTF corrected tomogram. To achieve
-    this, the algorithm takes into account the gradient of defocus in the sample. This means that
-    the top and the botton of the sample present different defocus values. A set of planes or
-    heights are defined along the gradient of defocus to model the defocus gradient. The number of
-    planes is determined by the parameter defocus step. By tilting the sample the defocus of a given
-    point in the sample will change with the tilt angle. This is due to the change of position
-    (height) of such point. Therefore, the defocus of the same voxel will be different in different
-    tilt images. The algorithm of novaCTF carries out a multiple CTF correction per tilt image
-    (as many as defocus steps will be defined). Then, A WBP will be carried out to reconstruct
-    the tomogram, however, according to the position of the voxel to the reconstruction the
-    corresponding CTF corrected image will be back projected. This ensures a local CTF correction
-    in the reconstruction.
+        The NovaCTF protocol performs local contrast transfer function
+        correction for cryo-electron tomography datasets and reconstructs
+        tomograms that account for the defocus gradient present across thick
+        biological samples. In cryo-electron tomography, different regions
+        of a tilted specimen are imaged at different defocus values because
+        of the geometry of the sample during acquisition. This protocol
+        compensates for those variations by reconstructing tomograms using
+        multiple defocus-corrected projections, leading to improved local
+        resolution and more accurate structural interpretation.
+
+        For biological users, this protocol is particularly important when
+        working with thick cellular specimens, lamellae, organelles, or
+        crowded molecular environments where conventional reconstruction
+        approaches may suffer from reduced contrast and inaccurate CTF
+        correction. By modeling the defocus variation across the sample,
+        the protocol improves preservation of high-resolution information
+        and increases the interpretability of reconstructed tomograms.
+
+        Inputs and General Workflow
+
+        The protocol requires two primary inputs: a set of aligned tilt-series
+        and their associated CTF estimations. Each tilt image must have a
+        corresponding defocus description so the reconstruction can model
+        how defocus changes throughout the specimen thickness. Matching
+        between tilt-series and CTF information is essential because the
+        reconstruction depends on accurate correspondence between imaging
+        geometry and optical parameters.
+
+        During execution, the protocol prepares the input data in formats
+        compatible with NovaCTF and IMOD-based processing workflows. It then
+        computes multiple defocus planes through the specimen thickness and
+        generates intermediate corrected projections. These corrected images
+        are finally combined into a locally CTF-corrected tomographic
+        reconstruction using weighted back projection.
+
+        Defocus Gradient Correction
+
+        One of the central concepts of this protocol is the modeling of the
+        defocus gradient along the beam direction. In tilted specimens, the
+        top and bottom regions of the sample experience different effective
+        defocus values. Instead of assuming a single global defocus for an
+        entire projection, the protocol subdivides the specimen thickness
+        into several regions and computes correction terms independently for
+        each one.
+
+        The defocus step parameter controls how finely the specimen is divided
+        along the Z direction. Smaller values increase the number of correction
+        planes and improve modeling accuracy, although they also increase
+        computational cost and storage requirements. Larger values reduce
+        computational demand but may oversimplify the defocus variation in
+        thick specimens.
+
+        In practical biological workflows, moderate defocus steps are often
+        sufficient for thin lamellae or small particles, whereas thicker
+        cellular tomograms may benefit from finer subdivision of the defocus
+        gradient. Users should balance reconstruction quality with available
+        computational resources.
+
+        CTF Correction Strategies
+
+        The protocol supports different approaches for CTF correction. The
+        phase-flipping strategy corrects phase inversions introduced by the
+        microscope optics while preserving amplitude information. This method
+        is computationally efficient and widely used in many cryo-EM workflows.
+
+        Alternatively, multiplication-based correction modifies amplitudes
+        according to the CTF model and may provide smoother frequency-domain
+        behavior. Although computationally more demanding, it can sometimes
+        improve reconstruction quality in challenging datasets.
+
+        From a biological perspective, both approaches aim to restore
+        interpretable structural information that would otherwise be distorted
+        by the microscope transfer function. The optimal choice may depend on
+        sample quality, acquisition conditions, and downstream analysis goals.
+
+        Astigmatism and Optical Accuracy
+
+        The protocol can optionally account for astigmatism during correction
+        and reconstruction. Astigmatism occurs when defocus differs between
+        orthogonal directions and is common in cryo-electron microscopy data.
+        Correcting for astigmatism improves isotropy of the reconstructed
+        signal and may enhance the quality of subtomogram averaging results.
+
+        Accurate astigmatism correction requires reliable CTF estimation.
+        If the input CTF information does not contain astigmatism parameters,
+        enabling this option may not provide meaningful improvements. In
+        practice, users should ensure that upstream CTF estimation protocols
+        are configured appropriately when high-resolution reconstruction is
+        desired.
+
+        Tomogram Thickness and Geometry
+
+        The tomogram thickness parameter defines the reconstructed depth along
+        the beam direction. This value should reflect the approximate physical
+        thickness of the specimen region of interest. If the reconstruction
+        thickness is too small, biologically relevant structures may be clipped.
+        If it is excessively large, computational cost and reconstruction noise
+        may increase unnecessarily.
+
+        The protocol also supports tomogram shifts along the Z direction,
+        allowing users to reconstruct regions displaced relative to the nominal
+        center of the specimen. This can be useful in workflows where the
+        biological target occupies a non-central position within the acquired
+        field of view.
+
+        Radial Filtering and Noise Suppression
+
+        Radial filtering is applied during projection processing to suppress
+        high-frequency noise and stabilize reconstruction quality. The filtering
+        behavior combines a linear region with a Gaussian fall-off in reciprocal
+        space. These parameters influence the balance between preservation of
+        structural detail and reduction of reconstruction artifacts.
+
+        For routine cryo-electron tomography datasets, moderate filtering values
+        often provide a good compromise between contrast and resolution. More
+        aggressive filtering may be beneficial for noisy cellular data, whereas
+        milder filtering may preserve more high-resolution detail in cleaner
+        samples.
+
+        Reconstruction and Output Generation
+
+        After local CTF correction and filtering, the protocol reconstructs
+        the final tomogram using weighted back projection combined with
+        three-dimensional CTF correction. The resulting tomograms are produced
+        in a format suitable for downstream visualization, segmentation,
+        subtomogram extraction, or averaging workflows.
+
+        Each reconstructed tomogram preserves the acquisition metadata and
+        sampling information associated with the original tilt-series. The
+        protocol also manages intermediate processing products internally,
+        reducing storage usage once reconstruction is completed successfully.
+
+        Practical Recommendations
+
+        In biological practice, accurate tilt-series alignment and reliable
+        CTF estimation are the most important prerequisites for obtaining
+        high-quality NovaCTF reconstructions. Poor alignment quality or
+        inconsistent CTF estimation can significantly reduce the effectiveness
+        of local correction.
+
+        For thin samples or exploratory analyses, default reconstruction
+        parameters are often sufficient. For thicker specimens such as cellular
+        lamellae, users may improve results by reducing the defocus step size
+        and carefully validating tomogram thickness settings.
+
+        When computational resources are limited, it is often preferable to
+        begin with moderate reconstruction parameters and visually evaluate
+        the resulting tomograms before increasing correction complexity.
+        Biological interpretation should always consider the possibility of
+        reconstruction artifacts introduced by inaccurate optical modeling
+        or incomplete tilt-series alignment.
+
+        Final Perspective
+
+        Local CTF correction represents an important advance in cryo-electron
+        tomography because it addresses one of the major physical limitations
+        of thick-specimen imaging. By accounting for the variation of defocus
+        throughout the sample volume, the NovaCTF protocol improves the
+        interpretability and resolution of reconstructed tomograms and
+        provides a stronger foundation for high-resolution subtomogram
+        averaging and structural analysis workflows.
     """
 
     _label = 'compute defocus and reconstruct tomogram'
